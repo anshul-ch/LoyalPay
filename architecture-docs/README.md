@@ -36,6 +36,7 @@ This folder contains graph-ready design artifacts for LoyalPay.
 - `Diagrams/05-Class-Diagram-Auth.mmd`
 - `Diagrams/06-Class-Diagram-Platform.mmd`
 - `Diagrams/07-ER-Diagram.mmd`
+- `Diagrams/08-Ocelot-Routing-Flow.mmd`
 
 ### Database
 - `Database/LoyalPay-Schema.dbml`

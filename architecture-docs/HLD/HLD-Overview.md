@@ -11,7 +11,7 @@ It supports user authentication, wallet operations, reward points, and admin ope
 - **WalletService**: Wallet creation, balance, top-up, transfer, statement
 - **RewardsService**: Reward account, points earn, catalog, redemption, history
 - **AdminService**: KYC review, campaign creation, dashboard, user overview
-- **Gateway (YARP)**: Single entrypoint for routing and JWT validation
+- **Gateway (Ocelot)**: Single entrypoint for routing and JWT validation
 - **Shared**: Common API response and event contracts
 
 ## Infrastructure

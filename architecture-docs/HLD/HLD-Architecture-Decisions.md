@@ -5,10 +5,10 @@
 - **Decision**: Separate Auth, Wallet, Rewards, Admin and Gateway into independent projects.
 - **Reason**: Clear ownership and easier iterative development.
 
-## ADR-02: YARP as API Gateway
+## ADR-02: Ocelot as API Gateway
 
-- **Decision**: Use YARP for route-based reverse proxy.
-- **Reason**: Lightweight .NET-native gateway with config-based routing.
+- **Decision**: Use Ocelot for route-based reverse proxy.
+- **Reason**: Clean route file (`ocelot.json`) and easy short public URL mapping.
 
 ## ADR-03: RabbitMQ for Event Integration
 

@@ -1,4 +1,4 @@
-# LLD - API Gateway (YARP)
+# LLD - API Gateway (Ocelot)
 
 ## Responsibilities
 
@@ -8,17 +8,18 @@
 
 ## Route Mapping
 
-- `/api/auth/*` -> AuthService
-- `/api/profile/*` -> AuthService
-- `/api/wallet/*` -> WalletService
-- `/api/statement/*` -> WalletService
-- `/api/rewards/*` -> RewardsService
-- `/api/admin/*` -> AdminService
+- Short public routes:
+  - `/signup`, `/login`, `/refresh`, `/logout`
+  - `/profile`, `/profile/kyc`
+  - `/wallet/*`, `/statement/*`, `/rewards/*`, `/admin/*`
+- Backward-compatible routes:
+  - `/api/auth/*`, `/api/profile/*`, `/api/wallet/*`, `/api/statement/*`, `/api/rewards/*`, `/api/admin/*`
 
 ## Components
 
-- `Program.cs`: JWT + YARP + CORS
-- `appsettings.json`: reverse proxy route/cluster map
+- `Program.cs`: JWT + Ocelot + CORS
+- `ocelot.json`: route templates and downstream mapping
+- `appsettings.json`: JWT/logging/base settings
 
 ## Security
 

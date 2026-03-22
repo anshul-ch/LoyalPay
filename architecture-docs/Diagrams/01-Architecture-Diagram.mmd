@@ -1,5 +1,5 @@
 flowchart LR
-    Client[Web or Mobile Client] --> Gateway[YARP Gateway :5000]
+    Client[Web or Mobile Client] --> Gateway[Ocelot Gateway :5000]
 
     Gateway --> Auth[AuthService :5001]
     Gateway --> Wallet[WalletService :5002]

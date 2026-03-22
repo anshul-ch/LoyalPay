@@ -1,0 +1,14 @@
+flowchart TD
+    A[Client Request]
+    A --> B{Gateway Route Match}
+
+    B -->|/signup /login /refresh /logout| C[AuthService]
+    B -->|/profile /profile/kyc| C
+    B -->|/wallet/* /statement/*| D[WalletService]
+    B -->|/rewards/*| E[RewardsService]
+    B -->|/admin/*| F[AdminService]
+
+    B -->|/api/* compatibility paths| G[Mapped to same downstream]
+
+    H[JWT Validation in Ocelot] --> B
+    I[Authorized Route?] --> H
