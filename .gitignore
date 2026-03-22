@@ -29,6 +29,15 @@ appsettings.*.json
 .DS_Store
 Thumbs.db
 
+# Local reference/planning docs (keep local, never commit)
+PROJECT_REFERENCE.md
+PROJECT_STATE.md
+CONFIGURATION.md
+LoyalPay_Design_Document.md
+LoyalPay_Prompt_Plan_v5.md
+*.docx
+.idea/
+
 # KYC Upload Directory
 wwwroot/kyc/
 backend/LoyalPay.AuthService/wwwroot/kyc/
