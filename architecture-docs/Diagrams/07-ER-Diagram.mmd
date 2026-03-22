@@ -1,0 +1,92 @@
+erDiagram
+    USERS ||--o{ REFRESH_TOKENS : has
+
+    WALLET_ACCOUNTS ||--o{ LEDGER_ENTRIES : has
+    WALLET_ACCOUNTS ||--o{ TOPUP_REQUESTS : has
+
+    REWARD_ACCOUNTS ||--o{ REWARD_TRANSACTIONS : has
+    CATALOG_ITEMS ||--o{ REDEMPTIONS : redeemed
+
+    USERS {
+      guid UserId PK
+      string Email
+      string Phone
+      string FullName
+      string PasswordHash
+      string Role
+      string KycStatus
+    }
+
+    REFRESH_TOKENS {
+      int Id PK
+      guid UserId FK
+      string Token
+      datetime ExpiresAt
+      bool IsRevoked
+    }
+
+    WALLET_ACCOUNTS {
+      guid WalletId PK
+      guid UserId
+      decimal Balance
+      bool IsActive
+    }
+
+    LEDGER_ENTRIES {
+      guid EntryId PK
+      guid WalletId FK
+      string EntryType
+      decimal Amount
+      decimal BalanceAfter
+    }
+
+    TOPUP_REQUESTS {
+      guid TopUpId PK
+      guid WalletId FK
+      decimal Amount
+      string Status
+    }
+
+    REWARD_ACCOUNTS {
+      guid RewardId PK
+      guid UserId
+      int TotalPoints
+      string Tier
+    }
+
+    REWARD_TRANSACTIONS {
+      guid TxnId PK
+      guid UserId
+      string TxnType
+      int Points
+    }
+
+    CATALOG_ITEMS {
+      guid ItemId PK
+      string Name
+      int PointsCost
+      int Stock
+      bool IsActive
+    }
+
+    REDEMPTIONS {
+      guid RedemptionId PK
+      guid UserId
+      guid ItemId FK
+      int PointsSpent
+    }
+
+    CAMPAIGNS {
+      guid CampaignId PK
+      string Name
+      int BonusPoints
+      datetime StartDate
+      datetime EndDate
+    }
+
+    AUDIT_LOGS {
+      guid LogId PK
+      guid AdminUserId
+      string Action
+      datetime CreatedAt
+    }

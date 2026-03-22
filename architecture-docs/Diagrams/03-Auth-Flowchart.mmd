@@ -1,0 +1,16 @@
+flowchart TD
+    A[Signup Request] --> B{Email Exists?}
+    B -- Yes --> C[Return Fail]
+    B -- No --> D[Create User]
+    D --> E[Hash Password]
+    E --> F[Save User]
+    F --> G[Publish UserRegisteredEvent]
+    G --> H[Issue Access + Refresh Token]
+    H --> I[Return Success]
+
+    J[Login Request] --> K[Find User by Email]
+    K --> L{Password Valid?}
+    L -- No --> M[Return Fail]
+    L -- Yes --> N[Revoke Active Refresh Tokens]
+    N --> O[Issue New Token Pair]
+    O --> P[Return Success]

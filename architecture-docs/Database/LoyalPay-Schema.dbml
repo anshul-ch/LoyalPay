@@ -1,0 +1,122 @@
+Table Users {
+  UserId uniqueidentifier [pk]
+  Email nvarchar(255)
+  Phone nvarchar(20)
+  FullName nvarchar(200)
+  PasswordHash nvarchar(max)
+  Role nvarchar(50)
+  IsActive bit
+  KycStatus nvarchar(50)
+  KycDocumentType nvarchar(100)
+  KycDocumentNumber nvarchar(100)
+  KycFilePath nvarchar(max)
+  KycRejectionNote nvarchar(500)
+  KycReviewedAt datetime2
+  CreatedAt datetime2
+}
+
+Table RefreshTokens {
+  Id int [pk, increment]
+  UserId uniqueidentifier [not null]
+  Token nvarchar(max)
+  ExpiresAt datetime2
+  IsRevoked bit
+  CreatedAt datetime2
+}
+
+Table WalletAccounts {
+  WalletId uniqueidentifier [pk]
+  UserId uniqueidentifier [not null, unique]
+  Balance decimal(18,2)
+  IsActive bit
+  CreatedAt datetime2
+  UpdatedAt datetime2
+}
+
+Table LedgerEntries {
+  EntryId uniqueidentifier [pk]
+  WalletId uniqueidentifier [not null]
+  EntryType nvarchar(20)
+  Amount decimal(18,2)
+  BalanceAfter decimal(18,2)
+  Description nvarchar(500)
+  CreatedAt datetime2
+}
+
+Table TopUpRequests {
+  TopUpId uniqueidentifier [pk]
+  WalletId uniqueidentifier [not null]
+  Amount decimal(18,2)
+  PaymentMethod nvarchar(100)
+  Status nvarchar(50)
+  CreatedAt datetime2
+}
+
+Table TransferRequests {
+  TransferId uniqueidentifier [pk]
+  SenderWalletId uniqueidentifier
+  ReceiverWalletId uniqueidentifier
+  Amount decimal(18,2)
+  Note nvarchar(500)
+  CreatedAt datetime2
+}
+
+Table RewardAccounts {
+  RewardId uniqueidentifier [pk]
+  UserId uniqueidentifier [not null, unique]
+  TotalPoints int
+  Tier nvarchar(50)
+  CreatedAt datetime2
+  UpdatedAt datetime2
+}
+
+Table RewardTransactions {
+  TxnId uniqueidentifier [pk]
+  UserId uniqueidentifier [not null]
+  TxnType nvarchar(20)
+  Points int
+  Description nvarchar(500)
+  CreatedAt datetime2
+}
+
+Table CatalogItems {
+  ItemId uniqueidentifier [pk]
+  Name nvarchar(200)
+  Description nvarchar(500)
+  ItemType nvarchar(50)
+  PointsCost int
+  Stock int
+  IsActive bit
+  CreatedAt datetime2
+}
+
+Table Redemptions {
+  RedemptionId uniqueidentifier [pk]
+  UserId uniqueidentifier [not null]
+  ItemId uniqueidentifier [not null]
+  PointsSpent int
+  CouponCode nvarchar(200)
+  CreatedAt datetime2
+}
+
+Table Campaigns {
+  CampaignId uniqueidentifier [pk]
+  Name nvarchar(200)
+  Description nvarchar(500)
+  BonusPoints int
+  StartDate datetime2
+  EndDate datetime2
+  IsActive bit
+  CreatedAt datetime2
+}
+
+Table AuditLogs {
+  LogId uniqueidentifier [pk]
+  AdminUserId uniqueidentifier
+  Action nvarchar(200)
+  Notes nvarchar(500)
+  CreatedAt datetime2
+}
+
+Ref: RefreshTokens.UserId > Users.UserId
+Ref: TopUpRequests.WalletId > WalletAccounts.WalletId

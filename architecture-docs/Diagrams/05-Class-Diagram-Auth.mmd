@@ -1,0 +1,41 @@
+classDiagram
+    class AuthController {
+      +Signup(dto)
+      +Login(dto)
+      +Refresh(dto)
+      +Logout(dto)
+    }
+
+    class ProfileController {
+      +GetProfile()
+      +SubmitKyc(dto)
+    }
+
+    class AuthService {
+      +SignupAsync(dto)
+      +LoginAsync(dto)
+      +RefreshAsync(token)
+      +LogoutAsync(token)
+      +GetProfileAsync(userId)
+      +SubmitKycAsync(userId,dto)
+    }
+
+    class JwtHelper {
+      +CreateAccessToken(user)
+      +CreateRefreshToken()
+    }
+
+    class AuthDbContext {
+      +Users
+      +RefreshTokens
+    }
+
+    class User
+    class RefreshToken
+
+    AuthController --> AuthService
+    ProfileController --> AuthService
+    AuthService --> AuthDbContext
+    AuthService --> JwtHelper
+    AuthDbContext --> User
+    AuthDbContext --> RefreshToken

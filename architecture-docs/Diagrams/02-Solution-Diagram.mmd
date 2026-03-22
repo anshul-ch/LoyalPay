@@ -1,0 +1,19 @@
+graph TD
+    subgraph Backend
+        Shared[LoyalPay.Shared]
+        AuthP[LoyalPay.AuthService]
+        WalletP[LoyalPay.WalletService]
+        RewardsP[LoyalPay.RewardsService]
+        AdminP[LoyalPay.AdminService]
+        GatewayP[LoyalPay.Gateway]
+    end
+
+    AuthP --> Shared
+    WalletP --> Shared
+    RewardsP --> Shared
+    AdminP --> Shared
+
+    GatewayP --> AuthP
+    GatewayP --> WalletP
+    GatewayP --> RewardsP
+    GatewayP --> AdminP
