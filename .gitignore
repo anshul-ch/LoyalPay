@@ -17,6 +17,7 @@ dist/
 # Environment Variables & Secrets - DO NOT COMMIT THESE
 .env
 *.env
+!.env.example
 appsettings.json
 appsettings.Development.json
 appsettings.Production.json
