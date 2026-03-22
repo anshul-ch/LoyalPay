@@ -38,9 +38,9 @@ It supports user authentication, wallet operations, reward points, and admin ope
 
 ## Data Ownership
 
-- **Auth DB**: users, refresh tokens
-- **Wallet DB**: wallet accounts, ledger, top-ups, transfers
-- **Rewards DB**: reward accounts, transactions, catalog, redemptions, campaigns, audit
+- **Auth DB**: users, refresh tokens, kyc submissions
+- **Wallet DB**: wallet accounts, ledger, top-ups, transfers, transaction disputes
+- **Rewards DB**: reward accounts, transactions, point expiries, catalog, redemptions, campaigns, audit
 
 ## Non-Functional Notes
 

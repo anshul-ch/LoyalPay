@@ -24,6 +24,18 @@ Table RefreshTokens {
   CreatedAt datetime2
 }
 
+Table KycSubmissions {
+  SubmissionId uniqueidentifier [pk]
+  UserId uniqueidentifier [not null]
+  DocumentType nvarchar(100)
+  DocumentNumber nvarchar(100)
+  FilePath nvarchar(max)
+  Status nvarchar(50)
+  RejectionNote nvarchar(500)
+  SubmittedAt datetime2
+  ReviewedAt datetime2
+}
+
 Table WalletAccounts {
   WalletId uniqueidentifier [pk]
   UserId uniqueidentifier [not null, unique]
@@ -61,6 +73,16 @@ Table TransferRequests {
   CreatedAt datetime2
 }
 
+Table TransactionDisputes {
+  DisputeId uniqueidentifier [pk]
+  WalletId uniqueidentifier [not null]
+  LedgerEntryId uniqueidentifier
+  Status nvarchar(50)
+  Reason nvarchar(500)
+  CreatedAt datetime2
+  ResolvedAt datetime2
+}
+
 Table RewardAccounts {
   RewardId uniqueidentifier [pk]
   UserId uniqueidentifier [not null, unique]
@@ -77,6 +99,15 @@ Table RewardTransactions {
   Points int
   Description nvarchar(500)
   CreatedAt datetime2
+}
+
+Table PointExpiries {
+  ExpiryId uniqueidentifier [pk]
+  UserId uniqueidentifier [not null]
+  Points int
+  EarnedAt datetime2
+  ExpiresAt datetime2
+  IsExpired bit
 }
 
 Table CatalogItems {
@@ -119,4 +150,6 @@ Table AuditLogs {
 }
 
 Ref: RefreshTokens.UserId > Users.UserId
+Ref: KycSubmissions.UserId > Users.UserId
 Ref: TopUpRequests.WalletId > WalletAccounts.WalletId
+Ref: TransactionDisputes.WalletId > WalletAccounts.WalletId

@@ -27,6 +27,19 @@ CREATE TABLE RefreshTokens (
     CONSTRAINT FK_RefreshTokens_Users FOREIGN KEY (UserId) REFERENCES Users(UserId)
 );
 
+CREATE TABLE KycSubmissions (
+    SubmissionId UNIQUEIDENTIFIER PRIMARY KEY,
+    UserId UNIQUEIDENTIFIER NOT NULL,
+    DocumentType NVARCHAR(100) NOT NULL,
+    DocumentNumber NVARCHAR(100) NOT NULL,
+    FilePath NVARCHAR(MAX) NOT NULL,
+    Status NVARCHAR(50) NOT NULL,
+    RejectionNote NVARCHAR(500) NULL,
+    SubmittedAt DATETIME2 NOT NULL,
+    ReviewedAt DATETIME2 NULL,
+    CONSTRAINT FK_KycSubmissions_Users FOREIGN KEY (UserId) REFERENCES Users(UserId)
+);
+
 CREATE TABLE WalletAccounts (
     WalletId UNIQUEIDENTIFIER PRIMARY KEY,
     UserId UNIQUEIDENTIFIER NOT NULL UNIQUE,
@@ -65,6 +78,16 @@ CREATE TABLE TransferRequests (
     CreatedAt DATETIME2 NOT NULL
 );
 
+CREATE TABLE TransactionDisputes (
+    DisputeId UNIQUEIDENTIFIER PRIMARY KEY,
+    WalletId UNIQUEIDENTIFIER NOT NULL,
+    LedgerEntryId UNIQUEIDENTIFIER NULL,
+    Status NVARCHAR(50) NOT NULL,
+    Reason NVARCHAR(500) NOT NULL,
+    CreatedAt DATETIME2 NOT NULL,
+    ResolvedAt DATETIME2 NULL
+);
+
 CREATE TABLE RewardAccounts (
     RewardId UNIQUEIDENTIFIER PRIMARY KEY,
     UserId UNIQUEIDENTIFIER NOT NULL UNIQUE,
@@ -81,6 +104,15 @@ CREATE TABLE RewardTransactions (
     Points INT NOT NULL,
     Description NVARCHAR(500) NULL,
     CreatedAt DATETIME2 NOT NULL
+);
+
+CREATE TABLE PointExpiries (
+    ExpiryId UNIQUEIDENTIFIER PRIMARY KEY,
+    UserId UNIQUEIDENTIFIER NOT NULL,
+    Points INT NOT NULL,
+    EarnedAt DATETIME2 NOT NULL,
+    ExpiresAt DATETIME2 NOT NULL,
+    IsExpired BIT NOT NULL
 );
 
 CREATE TABLE CatalogItems (

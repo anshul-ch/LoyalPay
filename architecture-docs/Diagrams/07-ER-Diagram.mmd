@@ -1,10 +1,13 @@
 erDiagram
     USERS ||--o{ REFRESH_TOKENS : has
+    USERS ||--o{ KYC_SUBMISSIONS : submits
 
     WALLET_ACCOUNTS ||--o{ LEDGER_ENTRIES : has
     WALLET_ACCOUNTS ||--o{ TOPUP_REQUESTS : has
+    WALLET_ACCOUNTS ||--o{ TRANSACTION_DISPUTES : has
 
     REWARD_ACCOUNTS ||--o{ REWARD_TRANSACTIONS : has
+    REWARD_ACCOUNTS ||--o{ POINT_EXPIRIES : has
     CATALOG_ITEMS ||--o{ REDEMPTIONS : redeemed
 
     USERS {
@@ -23,6 +26,15 @@ erDiagram
       string Token
       datetime ExpiresAt
       bool IsRevoked
+    }
+
+    KYC_SUBMISSIONS {
+      guid SubmissionId PK
+      guid UserId FK
+      string DocumentType
+      string DocumentNumber
+      string Status
+      datetime SubmittedAt
     }
 
     WALLET_ACCOUNTS {
@@ -47,6 +59,14 @@ erDiagram
       string Status
     }
 
+    TRANSACTION_DISPUTES {
+      guid DisputeId PK
+      guid WalletId FK
+      guid LedgerEntryId
+      string Status
+      string Reason
+    }
+
     REWARD_ACCOUNTS {
       guid RewardId PK
       guid UserId
@@ -59,6 +79,14 @@ erDiagram
       guid UserId
       string TxnType
       int Points
+    }
+
+    POINT_EXPIRIES {
+      guid ExpiryId PK
+      guid UserId
+      int Points
+      datetime ExpiresAt
+      bool IsExpired
     }
 
     CATALOG_ITEMS {
