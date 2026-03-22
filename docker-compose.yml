@@ -6,7 +6,7 @@ services:
     ports:
       - "1433:1433"
     environment:
-      SA_PASSWORD: "LoyalPay@2025"
+      SA_PASSWORD: "${SQL_SA_PASSWORD}"
       ACCEPT_EULA: "Y"
     volumes:
       - sql_data:/var/opt/mssql
@@ -18,8 +18,8 @@ services:
       - "5672:5672"
       - "15672:15672"
     environment:
-      RABBITMQ_DEFAULT_USER: loyalpay
-      RABBITMQ_DEFAULT_PASS: loyalpay123
+      RABBITMQ_DEFAULT_USER: "${RABBITMQ_USER}"
+      RABBITMQ_DEFAULT_PASS: "${RABBITMQ_PASS}"
 
 volumes:
   sql_data:
