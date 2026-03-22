@@ -19,13 +19,32 @@ public class AdminService
         _rewardsDb = rewardsDb;
     }
 
-    public async Task<ApiResponse<List<UserView>>> GetPendingKycAsync()
+    public async Task<ApiResponse<List<object>>> GetPendingKycAsync()
     {
-        var users = await _authDb.Users
-            .Where(u => u.KycStatus == "Pending" && u.KycFilePath != null)
+        var kycRows = await _authDb.Database
+            .SqlQueryRaw<KycPendingRow>(@"
+                SELECT DISTINCT u.UserId, u.Email, u.Phone, u.FullName, u.KycStatus,
+                       u.KycDocumentType, u.KycDocumentNumber, u.KycFilePath, u.CreatedAt
+                FROM Users u
+                INNER JOIN KycSubmissions k ON k.UserId = u.UserId
+                WHERE k.Status = 'Pending'
+            ")
             .ToListAsync();
 
-        return ApiResponse<List<UserView>>.Ok(users);
+        var data = kycRows.Select(x => (object)new
+        {
+            x.UserId,
+            x.FullName,
+            x.Email,
+            x.Phone,
+            x.KycStatus,
+            x.KycDocumentType,
+            x.KycDocumentNumber,
+            x.KycFilePath,
+            x.CreatedAt
+        }).ToList();
+
+        return ApiResponse<List<object>>.Ok(data);
     }
 
     public async Task<ApiResponse<string>> ReviewKycAsync(Guid userId, KycReviewDto dto, Guid adminUserId)
@@ -133,4 +152,17 @@ public class AdminService
 
         return ApiResponse<List<object>>.Ok(result);
     }
+}
+
+public class KycPendingRow
+{
+    public Guid UserId { get; set; }
+    public string Email { get; set; } = string.Empty;
+    public string Phone { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public string KycStatus { get; set; } = string.Empty;
+    public string? KycDocumentType { get; set; }
+    public string? KycDocumentNumber { get; set; }
+    public string? KycFilePath { get; set; }
+    public DateTime CreatedAt { get; set; }
 }
