@@ -9,11 +9,10 @@ builder.Configuration.SetBasePath(builder.Environment.ContentRootPath)
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
     .AddJsonFile("ocelot.json", optional: false, reloadOnChange: true)
     .AddEnvironmentVariables();
-builder.Configuration.AddEnvironmentVariables();
 
-var jwtSecret = builder.Configuration["JwtSettings:Secret"] ?? builder.Configuration["JWT_SECRET"] ?? string.Empty;
-var jwtIssuer = builder.Configuration["JwtSettings:Issuer"] ?? builder.Configuration["JWT_ISSUER"] ?? string.Empty;
-var jwtAudience = builder.Configuration["JwtSettings:Audience"] ?? builder.Configuration["JWT_AUDIENCE"] ?? string.Empty;
+var jwtSecret = builder.Configuration["JWT_SECRET"] ?? builder.Configuration["JwtSettings:Secret"] ?? string.Empty;
+var jwtIssuer = builder.Configuration["JWT_ISSUER"] ?? builder.Configuration["JwtSettings:Issuer"] ?? string.Empty;
+var jwtAudience = builder.Configuration["JWT_AUDIENCE"] ?? builder.Configuration["JwtSettings:Audience"] ?? string.Empty;
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
