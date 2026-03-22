@@ -1,33 +1,51 @@
-# Local Secret Setup (Docker Compose)
+# Local Credentials Setup (Clean Pattern)
 
-To avoid committing credentials in `docker-compose.yml`, use environment variables.
+This project uses a single local secret file: `.env`.
 
-## 1) Create local `.env`
+## Files and their purpose
 
-Copy sample file:
+- `.env.example` (committed): template with placeholder values only
+- `.env` (local only, gitignored): your real credentials
+
+## 1) Create your local `.env`
 
 ```bash
 cp .env.example .env
 ```
 
-Update `.env` values:
+Then edit `.env` and set real values for:
 
-```env
-SQL_SA_PASSWORD=YourStrongSqlPassword
-RABBITMQ_USER=your_rabbit_user
-RABBITMQ_PASS=your_rabbit_password
-```
+- `SQL_SA_PASSWORD`
+- `RABBITMQ_USER`
+- `RABBITMQ_PASS`
+- `JWT_SECRET`
 
-## 2) Start infra
+Keep `JWT_ISSUER` and `JWT_AUDIENCE` as defaults unless needed.
+
+## 2) Start infrastructure
 
 ```bash
 docker compose up -d
 ```
 
-Compose automatically reads `.env` from repository root.
+Docker Compose reads `.env` automatically from repo root.
 
-## Notes
+## 3) Run services using same `.env`
 
-- `.env` is ignored by git
-- `.env.example` is committed as placeholder template
-- Never commit real passwords
+Use one source of truth by loading env vars before `dotnet run`.
+
+Example:
+
+```bash
+set -a
+source .env
+set +a
+```
+
+Then run service commands.
+
+## Rules
+
+- Never commit `.env`
+- Never put real secrets in `appsettings.json`
+- Keep only placeholders in committed config files
