@@ -1,27 +1,34 @@
 using LoyalPay.Shared.Common;
 using LoyalPay.Shared.Events;
-using LoyalPay.WalletService.Data;
 using LoyalPay.WalletService.DTOs;
 using LoyalPay.WalletService.Models;
+using LoyalPay.WalletService.Repositories;
 using MassTransit;
-using Microsoft.EntityFrameworkCore;
 
 namespace LoyalPay.WalletService.Services;
 
 public class WalletService
 {
-    private readonly WalletDbContext _db;
+    private readonly IWalletAccountRepository _walletRepository;
+    private readonly ITopUpRequestRepository _topUpRepository;
+    private readonly ITransferRequestRepository _transferRepository;
+    private readonly ILedgerEntryRepository _ledgerRepository;
     private readonly IPublishEndpoint _publishEndpoint;
 
-    public WalletService(WalletDbContext db, IPublishEndpoint publishEndpoint)
+    public WalletService(IWalletAccountRepository walletRepository, ITopUpRequestRepository topUpRepository,
+        ITransferRequestRepository transferRepository, ILedgerEntryRepository ledgerRepository,
+        IPublishEndpoint publishEndpoint)
     {
-        _db = db;
+        _walletRepository = walletRepository;
+        _topUpRepository = topUpRepository;
+        _transferRepository = transferRepository;
+        _ledgerRepository = ledgerRepository;
         _publishEndpoint = publishEndpoint;
     }
 
     public async Task<ApiResponse<object>> GetBalanceAsync(Guid userId)
     {
-        var wallet = await _db.WalletAccounts.FirstOrDefaultAsync(w => w.UserId == userId);
+        var wallet = await _walletRepository.GetWalletByUserIdAsync(userId);
         if (wallet == null)
         {
             return ApiResponse<object>.Fail("Wallet not found.");
@@ -40,7 +47,7 @@ public class WalletService
 
     public async Task<ApiResponse<object>> StartTopUpAsync(Guid userId, TopUpDto dto)
     {
-        var wallet = await _db.WalletAccounts.FirstOrDefaultAsync(w => w.UserId == userId);
+        var wallet = await _walletRepository.GetWalletByUserIdAsync(userId);
         if (wallet == null)
         {
             return ApiResponse<object>.Fail("Wallet not found.");
@@ -48,9 +55,7 @@ public class WalletService
 
         var todayStart = DateTime.UtcNow.Date;
 
-        var todayTotal = await _db.TopUpRequests
-            .Where(t => t.WalletId == wallet.WalletId && t.Status == "Success" && t.CreatedAt >= todayStart)
-            .SumAsync(t => (decimal?)t.Amount) ?? 0;
+        var todayTotal = await _topUpRepository.GetTodaysTotalForWalletAsync(wallet.WalletId, todayStart);
 
         if (todayTotal + dto.Amount > 50000)
         {
@@ -63,8 +68,8 @@ public class WalletService
         topUp.PaymentMethod = dto.PaymentMethod;
         topUp.Status = "Pending";
 
-        _db.TopUpRequests.Add(topUp);
-        await _db.SaveChangesAsync();
+        await _topUpRepository.AddTopUpRequestAsync(topUp);
+        await _topUpRepository.SaveChangesAsync();
 
         var data = new
         {
@@ -78,9 +83,7 @@ public class WalletService
 
     public async Task<ApiResponse<string>> FinishTopUpAsync(Guid topUpId, bool success)
     {
-        var topUp = await _db.TopUpRequests
-            .Include(t => t.WalletAccount)
-            .FirstOrDefaultAsync(t => t.TopUpId == topUpId);
+        var topUp = await _topUpRepository.GetTopUpByIdWithWalletAsync(topUpId);
 
         if (topUp == null)
         {
@@ -95,60 +98,47 @@ public class WalletService
         if (!success)
         {
             topUp.Status = "Failed";
-            await _db.SaveChangesAsync();
+            await _topUpRepository.SaveChangesAsync();
             return ApiResponse<string>.Fail("Payment failed.");
         }
 
-        using var tx = await _db.Database.BeginTransactionAsync();
-        try
-        {
-            topUp.Status = "Success";
+        topUp.Status = "Success";
+        
+        var wallet = topUp.WalletAccount;
+        wallet.Balance = wallet.Balance + topUp.Amount;
+        wallet.UpdatedAt = DateTime.UtcNow;
 
-            var newBalance = topUp.WalletAccount.Balance + topUp.Amount;
-            topUp.WalletAccount.Balance = newBalance;
-            topUp.WalletAccount.UpdatedAt = DateTime.UtcNow;
+        var ledgerEntry = new LedgerEntry();
+        ledgerEntry.WalletId = wallet.WalletId;
+        ledgerEntry.EntryType = "Credit";
+        ledgerEntry.Amount = topUp.Amount;
+        ledgerEntry.BalanceAfter = wallet.Balance;
+        ledgerEntry.Description = "Top-up via " + topUp.PaymentMethod;
+        ledgerEntry.CreatedAt = DateTime.UtcNow;
 
-            var ledgerEntry = new LedgerEntry();
-            ledgerEntry.WalletId = topUp.WalletId;
-            ledgerEntry.EntryType = "CREDIT";
-            ledgerEntry.Amount = topUp.Amount;
-            ledgerEntry.BalanceAfter = newBalance;
-            ledgerEntry.Description = "Top-up via " + topUp.PaymentMethod;
+        await _topUpRepository.UpdateTopUpRequestAsync(topUp);
+        await _walletRepository.UpdateWalletAsync(wallet);
+        await _ledgerRepository.AddLedgerEntryAsync(ledgerEntry);
+        await _topUpRepository.SaveChangesAsync();
 
-            _db.LedgerEntries.Add(ledgerEntry);
+        var topUpCompletedEvent = new TopUpCompletedEvent(wallet.UserId, topUp.Amount);
+        await _publishEndpoint.Publish(topUpCompletedEvent);
 
-            await _db.SaveChangesAsync();
-            await tx.CommitAsync();
-
-            await _publishEndpoint.Publish(new TopUpCompletedEvent(topUp.WalletAccount.UserId, topUp.Amount));
-
-            return ApiResponse<string>.Ok("Top-up successful!");
-        }
-        catch
-        {
-            await tx.RollbackAsync();
-            return ApiResponse<string>.Fail("Something went wrong. Please try again.");
-        }
+        return ApiResponse<string>.Ok("Top-up completed successfully.");
     }
 
     public async Task<ApiResponse<string>> TransferAsync(Guid senderUserId, TransferDto dto)
     {
-        var senderWallet = await _db.WalletAccounts.FirstOrDefaultAsync(w => w.UserId == senderUserId);
-        var receiverWallet = await _db.WalletAccounts.FirstOrDefaultAsync(w => w.UserId == dto.ReceiverUserId);
-
+        var senderWallet = await _walletRepository.GetWalletByUserIdAsync(senderUserId);
         if (senderWallet == null)
         {
-            return ApiResponse<string>.Fail("Your wallet was not found.");
+            return ApiResponse<string>.Fail("Sender wallet not found.");
         }
 
+        var receiverWallet = await _walletRepository.GetWalletByUserIdAsync(dto.ReceiverUserId);
         if (receiverWallet == null)
         {
-            return ApiResponse<string>.Fail("Recipient wallet not found.");
-        }
-
-        if (senderWallet.WalletId == receiverWallet.WalletId)
-        {
-            return ApiResponse<string>.Fail("Cannot transfer to yourself.");
+            return ApiResponse<string>.Fail("Receiver wallet not found.");
         }
 
         if (senderWallet.Balance < dto.Amount)
@@ -156,58 +146,48 @@ public class WalletService
             return ApiResponse<string>.Fail("Insufficient balance.");
         }
 
-        var todayStart = DateTime.UtcNow.Date;
-        var todaySent = await _db.TransferRequests
-            .Where(t => t.SenderWalletId == senderWallet.WalletId && t.CreatedAt >= todayStart)
-            .SumAsync(t => (decimal?)t.Amount) ?? 0;
-
-        if (todaySent + dto.Amount > 25000)
+        if (dto.Amount <= 0)
         {
-            return ApiResponse<string>.Fail("Daily transfer limit of ₹25,000 reached.");
+            return ApiResponse<string>.Fail("Invalid amount.");
         }
 
-        using var tx = await _db.Database.BeginTransactionAsync();
-        try
-        {
-            senderWallet.Balance = senderWallet.Balance - dto.Amount;
-            senderWallet.UpdatedAt = DateTime.UtcNow;
+        var transferRequest = new TransferRequest();
+        transferRequest.SenderWalletId = senderWallet.WalletId;
+        transferRequest.ReceiverWalletId = receiverWallet.WalletId;
+        transferRequest.Amount = dto.Amount;
+        transferRequest.Note = dto.Note;
+        transferRequest.CreatedAt = DateTime.UtcNow;
 
-            var senderLedger = new LedgerEntry();
-            senderLedger.WalletId = senderWallet.WalletId;
-            senderLedger.EntryType = "DEBIT";
-            senderLedger.Amount = dto.Amount;
-            senderLedger.BalanceAfter = senderWallet.Balance;
-            senderLedger.Description = dto.Note ?? "Transfer sent";
-            _db.LedgerEntries.Add(senderLedger);
+        senderWallet.Balance = senderWallet.Balance - dto.Amount;
+        senderWallet.UpdatedAt = DateTime.UtcNow;
 
-            receiverWallet.Balance = receiverWallet.Balance + dto.Amount;
-            receiverWallet.UpdatedAt = DateTime.UtcNow;
+        receiverWallet.Balance = receiverWallet.Balance + dto.Amount;
+        receiverWallet.UpdatedAt = DateTime.UtcNow;
 
-            var receiverLedger = new LedgerEntry();
-            receiverLedger.WalletId = receiverWallet.WalletId;
-            receiverLedger.EntryType = "CREDIT";
-            receiverLedger.Amount = dto.Amount;
-            receiverLedger.BalanceAfter = receiverWallet.Balance;
-            receiverLedger.Description = "Transfer received";
-            _db.LedgerEntries.Add(receiverLedger);
+        var senderEntry = new LedgerEntry();
+        senderEntry.WalletId = senderWallet.WalletId;
+        senderEntry.EntryType = "Debit";
+        senderEntry.Amount = -dto.Amount;
+        senderEntry.BalanceAfter = senderWallet.Balance;
+        senderEntry.Description = "Transfer to user " + dto.ReceiverUserId;
+        senderEntry.CreatedAt = DateTime.UtcNow;
 
-            var transfer = new TransferRequest();
-            transfer.SenderWalletId = senderWallet.WalletId;
-            transfer.ReceiverWalletId = receiverWallet.WalletId;
-            transfer.Amount = dto.Amount;
-            transfer.Note = dto.Note;
-            _db.TransferRequests.Add(transfer);
+        var receiverEntry = new LedgerEntry();
+        receiverEntry.WalletId = receiverWallet.WalletId;
+        receiverEntry.EntryType = "Credit";
+        receiverEntry.Amount = dto.Amount;
+        receiverEntry.BalanceAfter = receiverWallet.Balance;
+        receiverEntry.Description = "Transfer from user " + senderUserId;
+        receiverEntry.CreatedAt = DateTime.UtcNow;
 
-            await _db.SaveChangesAsync();
-            await tx.CommitAsync();
+        await _transferRepository.AddTransferRequestAsync(transferRequest);
+        await _walletRepository.UpdateWalletAsync(senderWallet);
+        await _walletRepository.UpdateWalletAsync(receiverWallet);
+        await _ledgerRepository.AddLedgerEntryAsync(senderEntry);
+        await _ledgerRepository.AddLedgerEntryAsync(receiverEntry);
+        await _transferRepository.SaveChangesAsync();
 
-            return ApiResponse<string>.Ok("Transfer successful!");
-        }
-        catch
-        {
-            await tx.RollbackAsync();
-            return ApiResponse<string>.Fail("Transfer failed. Please try again.");
-        }
+        return ApiResponse<string>.Ok("Transfer completed successfully.");
     }
 
     public async Task<ApiResponse<object>> GetTransactionsAsync(Guid userId, int page, int size)
@@ -222,33 +202,29 @@ public class WalletService
             size = 20;
         }
 
-        var wallet = await _db.WalletAccounts.FirstOrDefaultAsync(w => w.UserId == userId);
+        var wallet = await _walletRepository.GetWalletByUserIdAsync(userId);
         if (wallet == null)
         {
             return ApiResponse<object>.Fail("Wallet not found.");
         }
 
-        var total = await _db.LedgerEntries.CountAsync(e => e.WalletId == wallet.WalletId);
+        var total = await _ledgerRepository.GetTransactionCountByWalletIdAsync(wallet.WalletId);
 
-        var entries = await _db.LedgerEntries
-            .Where(e => e.WalletId == wallet.WalletId)
-            .OrderByDescending(e => e.CreatedAt)
-            .Skip((page - 1) * size)
-            .Take(size)
-            .Select(e => new TransactionDto
-            {
-                EntryId = e.EntryId,
-                EntryType = e.EntryType,
-                Amount = e.Amount,
-                BalanceAfter = e.BalanceAfter,
-                Description = e.Description,
-                CreatedAt = e.CreatedAt
-            })
-            .ToListAsync();
+        var entries = await _ledgerRepository.GetTransactionsByWalletIdAsync(wallet.WalletId, page, size);
+
+        var entryDtos = entries.Select(e => new TransactionDto
+        {
+            EntryId = e.EntryId,
+            EntryType = e.EntryType,
+            Amount = e.Amount,
+            BalanceAfter = e.BalanceAfter,
+            Description = e.Description,
+            CreatedAt = e.CreatedAt
+        }).ToList();
 
         var data = new
         {
-            Items = entries,
+            Items = entryDtos,
             Total = total,
             Page = page,
             Size = size
