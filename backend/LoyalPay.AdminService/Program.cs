@@ -22,12 +22,12 @@ if (!string.IsNullOrWhiteSpace(authDbFromEnv)) authConnectionString = authDbFrom
 if (!string.IsNullOrWhiteSpace(walletDbFromEnv)) walletConnectionString = walletDbFromEnv;
 if (!string.IsNullOrWhiteSpace(rewardsDbFromEnv)) rewardsConnectionString = rewardsDbFromEnv;
 
-var jwtSecret = builder.Configuration["JwtSettings:Secret"] ?? builder.Configuration["JWT_SECRET"] ?? string.Empty;
-var jwtIssuer = builder.Configuration["JwtSettings:Issuer"] ?? builder.Configuration["JWT_ISSUER"] ?? string.Empty;
-var jwtAudience = builder.Configuration["JwtSettings:Audience"] ?? builder.Configuration["JWT_AUDIENCE"] ?? string.Empty;
-var rabbitHost = builder.Configuration["RabbitMq:Host"] ?? builder.Configuration["RABBITMQ_HOST"] ?? "localhost";
-var rabbitUser = builder.Configuration["RabbitMq:Username"] ?? builder.Configuration["RABBITMQ_USER"] ?? "guest";
-var rabbitPass = builder.Configuration["RabbitMq:Password"] ?? builder.Configuration["RABBITMQ_PASS"] ?? "guest";
+var jwtSecret = builder.Configuration["JWT_SECRET"] ?? builder.Configuration["JwtSettings:Secret"] ?? string.Empty;
+var jwtIssuer = builder.Configuration["JWT_ISSUER"] ?? builder.Configuration["JwtSettings:Issuer"] ?? string.Empty;
+var jwtAudience = builder.Configuration["JWT_AUDIENCE"] ?? builder.Configuration["JwtSettings:Audience"] ?? string.Empty;
+var rabbitHost = builder.Configuration["RABBITMQ_HOST"] ?? builder.Configuration["RabbitMq:Host"] ?? "localhost";
+var rabbitUser = builder.Configuration["RABBITMQ_USER"] ?? builder.Configuration["RabbitMq:Username"] ?? "guest";
+var rabbitPass = builder.Configuration["RABBITMQ_PASS"] ?? builder.Configuration["RabbitMq:Password"] ?? "guest";
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

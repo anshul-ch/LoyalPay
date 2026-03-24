@@ -17,9 +17,24 @@ public class JwtHelper
 
     public JwtHelper(IConfiguration configuration)
     {
-        _secret = configuration["JwtSettings:Secret"] ?? string.Empty;
-        _issuer = configuration["JwtSettings:Issuer"] ?? string.Empty;
-        _audience = configuration["JwtSettings:Audience"] ?? string.Empty;
+        _secret = configuration["JWT_SECRET"] ?? configuration["JwtSettings:Secret"] ?? string.Empty;
+        _issuer = configuration["JWT_ISSUER"] ?? configuration["JwtSettings:Issuer"] ?? string.Empty;
+        _audience = configuration["JWT_AUDIENCE"] ?? configuration["JwtSettings:Audience"] ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(_secret) || _secret.Length < 32)
+        {
+            throw new InvalidOperationException("JWT secret is missing or too short. Use JWT_SECRET with at least 32 characters.");
+        }
+
+        if (string.IsNullOrWhiteSpace(_issuer))
+        {
+            throw new InvalidOperationException("JWT issuer is missing. Use JWT_ISSUER.");
+        }
+
+        if (string.IsNullOrWhiteSpace(_audience))
+        {
+            throw new InvalidOperationException("JWT audience is missing. Use JWT_AUDIENCE.");
+        }
 
         var expiryMinutesValue = configuration["JwtSettings:ExpiryMinutes"] ?? "60";
         var refreshExpiryDaysValue = configuration["JwtSettings:RefreshExpiryDays"] ?? "7";

@@ -1,5 +1,6 @@
 using LoyalPay.WalletService.Consumers;
 using LoyalPay.WalletService.Data;
+using LoyalPay.WalletService.Repositories;
 using LoyalPay.WalletService.Services;
 using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -19,19 +20,12 @@ if (!string.IsNullOrWhiteSpace(walletDbFromEnv))
     connectionString = walletDbFromEnv;
 }
 
-var jwtSecret = builder.Configuration["JwtSettings:Secret"] ?? string.Empty;
-var jwtIssuer = builder.Configuration["JwtSettings:Issuer"] ?? string.Empty;
-var jwtAudience = builder.Configuration["JwtSettings:Audience"] ?? string.Empty;
-var rabbitHost = builder.Configuration["RabbitMq:Host"] ?? string.Empty;
-var rabbitUser = builder.Configuration["RabbitMq:Username"] ?? string.Empty;
-var rabbitPass = builder.Configuration["RabbitMq:Password"] ?? string.Empty;
-
-if (string.IsNullOrWhiteSpace(jwtSecret)) jwtSecret = builder.Configuration["JWT_SECRET"] ?? string.Empty;
-if (string.IsNullOrWhiteSpace(jwtIssuer)) jwtIssuer = builder.Configuration["JWT_ISSUER"] ?? string.Empty;
-if (string.IsNullOrWhiteSpace(jwtAudience)) jwtAudience = builder.Configuration["JWT_AUDIENCE"] ?? string.Empty;
-if (string.IsNullOrWhiteSpace(rabbitHost)) rabbitHost = builder.Configuration["RABBITMQ_HOST"] ?? "localhost";
-if (string.IsNullOrWhiteSpace(rabbitUser)) rabbitUser = builder.Configuration["RABBITMQ_USER"] ?? "guest";
-if (string.IsNullOrWhiteSpace(rabbitPass)) rabbitPass = builder.Configuration["RABBITMQ_PASS"] ?? "guest";
+var jwtSecret = builder.Configuration["JWT_SECRET"] ?? builder.Configuration["JwtSettings:Secret"] ?? string.Empty;
+var jwtIssuer = builder.Configuration["JWT_ISSUER"] ?? builder.Configuration["JwtSettings:Issuer"] ?? string.Empty;
+var jwtAudience = builder.Configuration["JWT_AUDIENCE"] ?? builder.Configuration["JwtSettings:Audience"] ?? string.Empty;
+var rabbitHost = builder.Configuration["RABBITMQ_HOST"] ?? builder.Configuration["RabbitMq:Host"] ?? "localhost";
+var rabbitUser = builder.Configuration["RABBITMQ_USER"] ?? builder.Configuration["RabbitMq:Username"] ?? "guest";
+var rabbitPass = builder.Configuration["RABBITMQ_PASS"] ?? builder.Configuration["RabbitMq:Password"] ?? "guest";
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -60,6 +54,10 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 builder.Services.AddDbContext<WalletDbContext>(o => o.UseSqlServer(connectionString));
+builder.Services.AddScoped<IWalletAccountRepository, WalletAccountRepository>();
+builder.Services.AddScoped<ILedgerEntryRepository, LedgerEntryRepository>();
+builder.Services.AddScoped<ITopUpRequestRepository, TopUpRequestRepository>();
+builder.Services.AddScoped<ITransferRequestRepository, TransferRequestRepository>();
 builder.Services.AddScoped<LoyalPay.WalletService.Services.WalletService>();
 builder.Services.AddScoped<LoyalPay.WalletService.Services.StatementService>();
 
