@@ -33,8 +33,11 @@ Optional values usually left as default:
 ./scripts/stop-local.sh
 ```
 
-## Rules
+## 4) Run full workflow health check
 
-- Keep only one secret file: `.env`
-- Never commit `.env`
-- Do not create extra env files (`.env.dev`, `.env.new`, etc.)
+```bash
+./scripts/check-workflow.sh
+```
+
+This script validates both gateway routes (for example `/signup`, `/wallet/*`, `/rewards/*`, `/admin/*`) and direct service APIs (for example `/api/profile`, `/api/wallet/balance`, `/api/rewards/summary`).
+
