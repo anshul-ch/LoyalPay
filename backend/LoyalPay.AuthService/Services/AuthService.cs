@@ -1,22 +1,26 @@
-using LoyalPay.AuthService.Data;
 using LoyalPay.AuthService.DTOs;
 using LoyalPay.AuthService.Models;
+using LoyalPay.AuthService.Repositories;
 using LoyalPay.Shared.Common;
 using LoyalPay.Shared.Events;
 using MassTransit;
-using Microsoft.EntityFrameworkCore;
 
 namespace LoyalPay.AuthService.Services;
 
 public class AuthService
 {
-    private readonly AuthDbContext _db;
+    private readonly IUserRepository _userRepository;
+    private readonly IRefreshTokenRepository _refreshTokenRepository;
+    private readonly IKycSubmissionRepository _kycSubmissionRepository;
     private readonly JwtHelper _jwtHelper;
     private readonly IPublishEndpoint _publishEndpoint;
 
-    public AuthService(AuthDbContext db, JwtHelper jwtHelper, IPublishEndpoint publishEndpoint)
+    public AuthService(IUserRepository userRepository, IRefreshTokenRepository refreshTokenRepository, 
+        IKycSubmissionRepository kycSubmissionRepository, JwtHelper jwtHelper, IPublishEndpoint publishEndpoint)
     {
-        _db = db;
+        _userRepository = userRepository;
+        _refreshTokenRepository = refreshTokenRepository;
+        _kycSubmissionRepository = kycSubmissionRepository;
         _jwtHelper = jwtHelper;
         _publishEndpoint = publishEndpoint;
     }
@@ -32,8 +36,8 @@ public class AuthService
         refreshTokenEntity.ExpiresAt = DateTime.UtcNow.AddDays(_jwtHelper.RefreshExpiryDays);
         refreshTokenEntity.IsRevoked = false;
 
-        _db.RefreshTokens.Add(refreshTokenEntity);
-        await _db.SaveChangesAsync();
+        await _refreshTokenRepository.AddRefreshTokenAsync(refreshTokenEntity);
+        await _refreshTokenRepository.SaveChangesAsync();
 
         var tokenDto = new TokenDto();
         tokenDto.AccessToken = accessToken;
@@ -47,7 +51,7 @@ public class AuthService
 
     public async Task<ApiResponse<TokenDto>> SignupAsync(SignupDto dto)
     {
-        var alreadyExists = await _db.Users.AnyAsync(u => u.Email == dto.Email);
+        var alreadyExists = await _userRepository.UserExistsAsync(dto.Email);
         if (alreadyExists)
         {
             return ApiResponse<TokenDto>.Fail("This email is already registered.");
@@ -62,8 +66,8 @@ public class AuthService
         user.IsActive = true;
         user.KycStatus = "Pending";
 
-        _db.Users.Add(user);
-        await _db.SaveChangesAsync();
+        await _userRepository.AddUserAsync(user);
+        await _userRepository.SaveChangesAsync();
 
         await _publishEndpoint.Publish(new UserRegisteredEvent(user.UserId));
 
@@ -73,7 +77,7 @@ public class AuthService
 
     public async Task<ApiResponse<TokenDto>> LoginAsync(LoginDto dto)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
+        var user = await _userRepository.GetUserByEmailAsync(dto.Email);
         if (user == null)
         {
             return ApiResponse<TokenDto>.Fail("Invalid email or password.");
@@ -90,16 +94,14 @@ public class AuthService
             return ApiResponse<TokenDto>.Fail("This account has been deactivated.");
         }
 
-        var activeTokens = await _db.RefreshTokens
-            .Where(t => t.UserId == user.UserId && !t.IsRevoked)
-            .ToListAsync();
+        var activeTokens = await _refreshTokenRepository.GetActiveTokensByUserIdAsync(user.UserId);
 
         foreach (var token in activeTokens)
         {
             token.IsRevoked = true;
         }
 
-        await _db.SaveChangesAsync();
+        await _refreshTokenRepository.SaveChangesAsync();
 
         var tokens = await IssueTokensAsync(user);
         return ApiResponse<TokenDto>.Ok(tokens);
@@ -107,9 +109,7 @@ public class AuthService
 
     public async Task<ApiResponse<TokenDto>> RefreshAsync(string refreshToken)
     {
-        var storedToken = await _db.RefreshTokens
-            .Include(t => t.User)
-            .FirstOrDefaultAsync(t => t.Token == refreshToken && !t.IsRevoked);
+        var storedToken = await _refreshTokenRepository.GetRefreshTokenWithUserAsync(refreshToken);
 
         if (storedToken == null)
         {
@@ -122,7 +122,7 @@ public class AuthService
         }
 
         storedToken.IsRevoked = true;
-        await _db.SaveChangesAsync();
+        await _refreshTokenRepository.SaveChangesAsync();
 
         var tokens = await IssueTokensAsync(storedToken.User);
         return ApiResponse<TokenDto>.Ok(tokens);
@@ -130,17 +130,17 @@ public class AuthService
 
     public async Task LogoutAsync(string refreshToken)
     {
-        var storedToken = await _db.RefreshTokens.FirstOrDefaultAsync(t => t.Token == refreshToken);
+        var storedToken = await _refreshTokenRepository.GetRefreshTokenAsync(refreshToken);
         if (storedToken != null)
         {
             storedToken.IsRevoked = true;
-            await _db.SaveChangesAsync();
+            await _refreshTokenRepository.SaveChangesAsync();
         }
     }
 
     public async Task<ApiResponse<object>> GetProfileAsync(Guid userId)
     {
-        var user = await _db.Users.FindAsync(userId);
+        var user = await _userRepository.GetUserByIdAsync(userId);
         if (user == null)
         {
             return ApiResponse<object>.Fail("User not found.");
@@ -164,7 +164,7 @@ public class AuthService
 
     public async Task<ApiResponse<string>> SubmitKycAsync(Guid userId, KycSubmitDto dto)
     {
-        var user = await _db.Users.FindAsync(userId);
+        var user = await _userRepository.GetUserByIdAsync(userId);
         if (user == null)
         {
             return ApiResponse<string>.Fail("User not found.");
@@ -196,9 +196,9 @@ public class AuthService
         submission.DocumentNumber = dto.DocumentNumber;
         submission.FilePath = filePath;
         submission.Status = "Pending";
-        _db.KycSubmissions.Add(submission);
+        await _kycSubmissionRepository.AddKycSubmissionAsync(submission);
 
-        await _db.SaveChangesAsync();
+        await _userRepository.SaveChangesAsync();
         return ApiResponse<string>.Ok("KYC submitted. It will be reviewed shortly.");
     }
 }

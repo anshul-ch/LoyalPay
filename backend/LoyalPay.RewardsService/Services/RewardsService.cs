@@ -1,18 +1,24 @@
-using LoyalPay.RewardsService.Data;
 using LoyalPay.RewardsService.DTOs;
 using LoyalPay.RewardsService.Models;
+using LoyalPay.RewardsService.Repositories;
 using LoyalPay.Shared.Common;
-using Microsoft.EntityFrameworkCore;
 
 namespace LoyalPay.RewardsService.Services;
 
 public class RewardsService
 {
-    private readonly RewardsDbContext _db;
+    private readonly IRewardAccountRepository _rewardAccountRepository;
+    private readonly ICatalogItemRepository _catalogRepository;
+    private readonly IRedemptionRepository _redemptionRepository;
+    private readonly IRewardTransactionRepository _rewardTransactionRepository;
 
-    public RewardsService(RewardsDbContext db)
+    public RewardsService(IRewardAccountRepository rewardAccountRepository, ICatalogItemRepository catalogRepository,
+        IRedemptionRepository redemptionRepository, IRewardTransactionRepository rewardTransactionRepository)
     {
-        _db = db;
+        _rewardAccountRepository = rewardAccountRepository;
+        _catalogRepository = catalogRepository;
+        _redemptionRepository = redemptionRepository;
+        _rewardTransactionRepository = rewardTransactionRepository;
     }
 
     private string GetTier(int points)
@@ -47,99 +53,132 @@ public class RewardsService
 
     public async Task<ApiResponse<RewardSummaryDto>> GetSummaryAsync(Guid userId)
     {
-        var account = await _db.RewardAccounts.FirstOrDefaultAsync(r => r.UserId == userId);
+        var account = await _rewardAccountRepository.GetRewardAccountByUserIdAsync(userId);
         if (account == null)
         {
             return ApiResponse<RewardSummaryDto>.Fail("Reward account not found.");
         }
 
-        var dto = new RewardSummaryDto();
-        dto.TotalPoints = account.TotalPoints;
-        dto.Tier = account.Tier;
-        dto.TierProgress = GetTierProgress(account.TotalPoints);
+        var tier = GetTier(account.TotalPoints);
+        var progress = GetTierProgress(account.TotalPoints);
 
-        return ApiResponse<RewardSummaryDto>.Ok(dto);
+        var summary = new RewardSummaryDto();
+        summary.TotalPoints = account.TotalPoints;
+        summary.Tier = tier;
+        summary.TierProgress = progress;
+
+        return ApiResponse<RewardSummaryDto>.Ok(summary);
     }
 
-    public async Task<ApiResponse<List<CatalogItem>>> GetCatalogAsync()
+    public async Task<ApiResponse<List<CatalogItemDto>>> GetCatalogAsync()
     {
-        var items = await _db.CatalogItems.Where(i => i.IsActive).ToListAsync();
-        return ApiResponse<List<CatalogItem>>.Ok(items);
+        var items = await _catalogRepository.GetAllCatalogItemsAsync();
+
+        var catalog = items.Select(item => new CatalogItemDto
+        {
+            ItemId = item.ItemId,
+            Name = item.Name,
+            Description = item.Description,
+            ItemType = item.ItemType,
+            PointsCost = item.PointsCost,
+            IsActive = item.IsActive
+        }).ToList();
+
+        return ApiResponse<List<CatalogItemDto>>.Ok(catalog);
     }
 
-    public async Task<ApiResponse<object>> RedeemAsync(Guid userId, RedeemDto dto)
+    public async Task<ApiResponse<string>> RedeemAsync(Guid userId, RedeemDto dto)
     {
-        var account = await _db.RewardAccounts.FirstOrDefaultAsync(r => r.UserId == userId);
+        var account = await _rewardAccountRepository.GetRewardAccountByUserIdAsync(userId);
         if (account == null)
         {
-            return ApiResponse<object>.Fail("Reward account not found.");
+            return ApiResponse<string>.Fail("Reward account not found.");
         }
 
-        var item = await _db.CatalogItems.FindAsync(dto.ItemId);
-        if (item == null || !item.IsActive)
+        var item = await _catalogRepository.GetCatalogItemByIdAsync(dto.ItemId);
+        if (item == null)
         {
-            return ApiResponse<object>.Fail("Item not available.");
+            return ApiResponse<string>.Fail("Item not found in catalog.");
         }
 
-        if (item.Stock == 0)
+        if (!item.IsActive)
         {
-            return ApiResponse<object>.Fail("Out of stock.");
+            return ApiResponse<string>.Fail("This item is currently unavailable.");
         }
 
         if (account.TotalPoints < item.PointsCost)
         {
-            return ApiResponse<object>.Fail("Not enough points. Need " + item.PointsCost + ", you have " + account.TotalPoints + ".");
+            return ApiResponse<string>.Fail("Insufficient points for this redemption.");
         }
 
         account.TotalPoints = account.TotalPoints - item.PointsCost;
-        account.Tier = GetTier(account.TotalPoints);
         account.UpdatedAt = DateTime.UtcNow;
-
-        if (item.Stock > 0)
-        {
-            item.Stock = item.Stock - 1;
-        }
-
-        string? couponCode = null;
-        if (item.ItemType == "Coupon")
-        {
-            couponCode = "LP-" + Guid.NewGuid().ToString("N")[..8].ToUpper();
-        }
 
         var redemption = new Redemption();
         redemption.UserId = userId;
-        redemption.ItemId = item.ItemId;
+        redemption.ItemId = dto.ItemId;
         redemption.PointsSpent = item.PointsCost;
-        redemption.CouponCode = couponCode;
-        _db.Redemptions.Add(redemption);
+        redemption.CreatedAt = DateTime.UtcNow;
 
         var transaction = new RewardTransaction();
         transaction.UserId = userId;
-        transaction.TxnType = "REDEEM";
+        transaction.TxnType = "Redemption";
         transaction.Points = -item.PointsCost;
         transaction.Description = "Redeemed: " + item.Name;
-        _db.RewardTransactions.Add(transaction);
+        transaction.CreatedAt = DateTime.UtcNow;
 
-        await _db.SaveChangesAsync();
+        await _rewardAccountRepository.UpdateRewardAccountAsync(account);
+        await _redemptionRepository.AddRedemptionAsync(redemption);
+        await _rewardTransactionRepository.AddRewardTransactionAsync(transaction);
+        await _rewardAccountRepository.SaveChangesAsync();
 
-        var data = new
-        {
-            Message = "Redeemed successfully!",
-            CouponCode = couponCode,
-            PointsSpent = item.PointsCost,
-            RemainingPoints = account.TotalPoints
-        };
-
-        return ApiResponse<object>.Ok(data);
+        return ApiResponse<string>.Ok("Redemption successful! Your request is being processed.");
     }
 
-    public async Task<ApiResponse<List<RewardTransaction>>> GetHistoryAsync(Guid userId)
+    public async Task<ApiResponse<List<RewardTransactionDto>>> GetHistoryAsync(Guid userId)
     {
-        var history = await _db.RewardTransactions
-            .Where(t => t.UserId == userId)
-            .OrderByDescending(t => t.CreatedAt)
-            .ToListAsync();
+        var transactions = await _rewardTransactionRepository.GetTransactionsByUserIdAsync(userId);
 
-        return ApiResponse<List<RewardTransaction>>.Ok(history);
+        var history = transactions.Select(t => new RewardTransactionDto
+        {
+            TransactionId = t.TxnId,
+            TransactionType = t.TxnType,
+            Points = t.Points,
+            Description = t.Description ?? "",
+            CreatedAt = t.CreatedAt
+        }).ToList();
+
+        return ApiResponse<List<RewardTransactionDto>>.Ok(history);
+    }
+
+    public async Task AddPointsAsync(Guid userId, int points, string description)
+    {
+        var account = await _rewardAccountRepository.GetRewardAccountByUserIdAsync(userId);
+        if (account == null)
+        {
+            account = new RewardAccount();
+            account.UserId = userId;
+            account.TotalPoints = 0;
+            account.Tier = "Silver";
+            account.CreatedAt = DateTime.UtcNow;
+            account.UpdatedAt = DateTime.UtcNow;
+
+            await _rewardAccountRepository.AddRewardAccountAsync(account);
+        }
+
+        account.TotalPoints = account.TotalPoints + points;
+        account.Tier = GetTier(account.TotalPoints);
+        account.UpdatedAt = DateTime.UtcNow;
+
+        var transaction = new RewardTransaction();
+        transaction.UserId = userId;
+        transaction.TxnType = "Earned";
+        transaction.Points = points;
+        transaction.Description = description;
+        transaction.CreatedAt = DateTime.UtcNow;
+
+        await _rewardAccountRepository.UpdateRewardAccountAsync(account);
+        await _rewardTransactionRepository.AddRewardTransactionAsync(transaction);
+        await _rewardAccountRepository.SaveChangesAsync();
     }
 }
