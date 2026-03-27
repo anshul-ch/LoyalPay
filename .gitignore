@@ -39,6 +39,10 @@ LoyalPay_Prompt_Plan_v5.md
 *.docx
 .idea/
 
+# Architecture and documentation files (local reference, don't commit)
+architecture-docs/
+scripts/
+
 # KYC Upload Directory
 wwwroot/kyc/
 backend/LoyalPay.AuthService/wwwroot/kyc/
