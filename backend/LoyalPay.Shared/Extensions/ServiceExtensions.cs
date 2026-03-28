@@ -1,3 +1,4 @@
+using DotNetEnv;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,6 +11,11 @@ namespace LoyalPay.Shared.Extensions;
 public static class ServiceExtensions
 {
     public const string CorsPolicyName = "AllowFrontend";
+
+    public static void LoadEnv()
+    {
+        Env.TraversePath().Load();
+    }
 
     public static IServiceCollection AddLoyalPayControllers(this IServiceCollection services)
     {

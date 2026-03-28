@@ -7,6 +7,8 @@ using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Infrastructure;
 
+ServiceExtensions.LoadEnv();
+
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddEnvironmentVariables();
 

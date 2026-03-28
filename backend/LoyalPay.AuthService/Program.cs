@@ -5,6 +5,8 @@ using LoyalPay.Shared.Extensions;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 
+ServiceExtensions.LoadEnv();
+
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddEnvironmentVariables();
 
