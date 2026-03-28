@@ -114,7 +114,6 @@ public class AdminService
     {
         var totalUsers = await _authDb.Users.CountAsync(u => u.Role == "User");
         var pendingKyc = await _authDb.Users.CountAsync(u => u.KycStatus == "Pending");
-        var totalBalance = await _walletDb.WalletAccounts.SumAsync(w => (decimal?)w.Balance) ?? 0;
         var silver = await _rewardsDb.RewardAccounts.CountAsync(r => r.Tier == "Silver");
         var gold = await _rewardsDb.RewardAccounts.CountAsync(r => r.Tier == "Gold");
         var platinum = await _rewardsDb.RewardAccounts.CountAsync(r => r.Tier == "Platinum");
@@ -123,7 +122,6 @@ public class AdminService
         {
             TotalUsers = totalUsers,
             PendingKycCount = pendingKyc,
-            TotalWalletBalance = totalBalance,
             SilverCount = silver,
             GoldCount = gold,
             PlatinumCount = platinum
@@ -145,7 +143,6 @@ public class AdminService
             u.Email,
             u.KycStatus,
             u.IsActive,
-            Balance = wallets.FirstOrDefault(w => w.UserId == u.UserId)?.Balance ?? 0,
             Points = rewards.FirstOrDefault(r => r.UserId == u.UserId)?.TotalPoints ?? 0,
             Tier = rewards.FirstOrDefault(r => r.UserId == u.UserId)?.Tier ?? "Silver"
         }).ToList();

@@ -25,8 +25,11 @@ public class StatementService
             return Array.Empty<byte>();
         }
 
+        var startOfDay = from.Date;
+        var endOfDay = to.Date.AddDays(1).AddSeconds(-1);
+
         var entries = await _db.LedgerEntries
-            .Where(e => e.WalletId == wallet.WalletId && e.CreatedAt >= from && e.CreatedAt <= to)
+            .Where(e => e.WalletId == wallet.WalletId && e.CreatedAt >= startOfDay && e.CreatedAt <= endOfDay)
             .OrderByDescending(e => e.CreatedAt)
             .ToListAsync();
 
@@ -84,8 +87,11 @@ public class StatementService
             return Array.Empty<byte>();
         }
 
+        var startOfDay = from.Date;
+        var endOfDay = to.Date.AddDays(1).AddSeconds(-1);
+
         var entries = await _db.LedgerEntries
-            .Where(e => e.WalletId == wallet.WalletId && e.CreatedAt >= from && e.CreatedAt <= to)
+            .Where(e => e.WalletId == wallet.WalletId && e.CreatedAt >= startOfDay && e.CreatedAt <= endOfDay)
             .OrderByDescending(e => e.CreatedAt)
             .ToListAsync();
 

@@ -15,6 +15,8 @@ public class RewardsDbContext : DbContext
     public DbSet<Redemption> Redemptions { get; set; }
     public DbSet<PointExpiry> PointExpiries { get; set; }
 
+    public DbSet<Campaign> Campaigns { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<RewardAccount>().Property(x => x.RewardId).HasDefaultValueSql("NEWID()");
@@ -33,6 +35,10 @@ public class RewardsDbContext : DbContext
 
         modelBuilder.Entity<PointExpiry>().Property(x => x.ExpiryId).HasDefaultValueSql("NEWID()");
         modelBuilder.Entity<PointExpiry>().HasIndex(x => new { x.UserId, x.ExpiresAt });
+
+        modelBuilder.Entity<Campaign>().ToTable("Campaigns", t => t.ExcludeFromMigrations());
+        modelBuilder.Entity<Campaign>().Property(x => x.CampaignId).HasDefaultValueSql("NEWID()");
+        modelBuilder.Entity<Campaign>().Property(x => x.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
 
         base.OnModelCreating(modelBuilder);
     }

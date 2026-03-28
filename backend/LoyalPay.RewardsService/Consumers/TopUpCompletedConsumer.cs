@@ -23,8 +23,10 @@ public class TopUpCompletedConsumer : IConsumer<TopUpCompletedEvent>
             return;
         }
 
+        // Base points: 1 point for every ₹100 spent
         var points = (int)Math.Floor(context.Message.Amount / 100);
 
+        // First top-up bonus: extra 100 points
         var isFirstTopUp = !await _db.RewardTransactions
             .AnyAsync(t => t.UserId == context.Message.UserId && t.TxnType == "EARN");
 
@@ -42,21 +44,46 @@ public class TopUpCompletedConsumer : IConsumer<TopUpCompletedEvent>
         account.Tier = GetTier(account.TotalPoints);
         account.UpdatedAt = DateTime.UtcNow;
 
+        // Build the description for this transaction
+        string description;
+        if (isFirstTopUp)
+        {
+            description = "+" + points + " pts (includes 100 first top-up bonus)";
+        }
+        else
+        {
+            description = "+" + points + " pts for top-up of ₹" + context.Message.Amount;
+        }
+
         var transaction = new RewardTransaction();
         transaction.UserId = context.Message.UserId;
         transaction.TxnType = "EARN";
         transaction.Points = points;
-
-        if (isFirstTopUp)
-        {
-            transaction.Description = "+" + points + " pts (includes 100 first top-up bonus)";
-        }
-        else
-        {
-            transaction.Description = "+" + points + " pts for top-up";
-        }
-
+        transaction.Description = description;
+        transaction.CreatedAt = DateTime.UtcNow;
         _db.RewardTransactions.Add(transaction);
+
+        // Check if any campaign is active RIGHT NOW and give bonus points
+        var now = DateTime.UtcNow;
+        var activeCampaigns = await _db.Campaigns
+            .Where(c => c.IsActive && c.StartDate <= now && c.EndDate >= now)
+            .ToListAsync();
+
+        foreach (var campaign in activeCampaigns)
+        {
+            account.TotalPoints = account.TotalPoints + campaign.BonusPoints;
+            account.Tier = GetTier(account.TotalPoints);
+            account.UpdatedAt = DateTime.UtcNow;
+
+            var bonusTransaction = new RewardTransaction();
+            bonusTransaction.UserId = context.Message.UserId;
+            bonusTransaction.TxnType = "BONUS";
+            bonusTransaction.Points = campaign.BonusPoints;
+            bonusTransaction.Description = "Bonus from campaign: " + campaign.Name;
+            bonusTransaction.CreatedAt = DateTime.UtcNow;
+            _db.RewardTransactions.Add(bonusTransaction);
+        }
+
         await _db.SaveChangesAsync();
     }
 
