@@ -48,4 +48,12 @@ public class AuthController : ControllerBase
         await _authService.LogoutAsync(dto.RefreshToken);
         return Ok(ApiResponse<string>.Ok("Logged out."));
     }
+
+    [HttpPost("forgot-password")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
+    {
+        var result = await _authService.ForgotPasswordAsync(dto);
+        return Ok(result);
+    }
 }

@@ -15,6 +15,13 @@
       "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5001 } ]
     },
     {
+      "UpstreamPathTemplate": "/forgot-password",
+      "UpstreamHttpMethod": [ "POST" ],
+      "DownstreamPathTemplate": "/api/auth/forgot-password",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5001 } ]
+    },
+    {
       "UpstreamPathTemplate": "/refresh",
       "UpstreamHttpMethod": [ "POST" ],
       "DownstreamPathTemplate": "/api/auth/refresh",
@@ -33,7 +40,35 @@
     },
     {
       "UpstreamPathTemplate": "/auth/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "PATCH" ],
+      "UpstreamHttpMethod": [ "GET" ],
+      "DownstreamPathTemplate": "/api/auth/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5001 } ]
+    },
+    {
+      "UpstreamPathTemplate": "/auth/{everything}",
+      "UpstreamHttpMethod": [ "POST" ],
+      "DownstreamPathTemplate": "/api/auth/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5001 } ]
+    },
+    {
+      "UpstreamPathTemplate": "/auth/{everything}",
+      "UpstreamHttpMethod": [ "PUT" ],
+      "DownstreamPathTemplate": "/api/auth/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5001 } ]
+    },
+    {
+      "UpstreamPathTemplate": "/auth/{everything}",
+      "UpstreamHttpMethod": [ "DELETE" ],
+      "DownstreamPathTemplate": "/api/auth/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5001 } ]
+    },
+    {
+      "UpstreamPathTemplate": "/auth/{everything}",
+      "UpstreamHttpMethod": [ "PATCH" ],
       "DownstreamPathTemplate": "/api/auth/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5001 } ]
@@ -60,7 +95,47 @@
     },
     {
       "UpstreamPathTemplate": "/wallet/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "PATCH" ],
+      "UpstreamHttpMethod": [ "GET" ],
+      "DownstreamPathTemplate": "/api/wallet/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5002 } ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
+    {
+      "UpstreamPathTemplate": "/wallet/{everything}",
+      "UpstreamHttpMethod": [ "POST" ],
+      "DownstreamPathTemplate": "/api/wallet/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5002 } ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
+    {
+      "UpstreamPathTemplate": "/wallet/{everything}",
+      "UpstreamHttpMethod": [ "PUT" ],
+      "DownstreamPathTemplate": "/api/wallet/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5002 } ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
+    {
+      "UpstreamPathTemplate": "/wallet/{everything}",
+      "UpstreamHttpMethod": [ "DELETE" ],
+      "DownstreamPathTemplate": "/api/wallet/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5002 } ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
+    {
+      "UpstreamPathTemplate": "/wallet/{everything}",
+      "UpstreamHttpMethod": [ "PATCH" ],
       "DownstreamPathTemplate": "/api/wallet/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5002 } ],
@@ -87,7 +162,47 @@
     },
     {
       "UpstreamPathTemplate": "/rewards/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "PATCH" ],
+      "UpstreamHttpMethod": [ "GET" ],
+      "DownstreamPathTemplate": "/api/rewards/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5003 } ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
+    {
+      "UpstreamPathTemplate": "/rewards/{everything}",
+      "UpstreamHttpMethod": [ "POST" ],
+      "DownstreamPathTemplate": "/api/rewards/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5003 } ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
+    {
+      "UpstreamPathTemplate": "/rewards/{everything}",
+      "UpstreamHttpMethod": [ "PUT" ],
+      "DownstreamPathTemplate": "/api/rewards/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5003 } ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
+    {
+      "UpstreamPathTemplate": "/rewards/{everything}",
+      "UpstreamHttpMethod": [ "DELETE" ],
+      "DownstreamPathTemplate": "/api/rewards/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5003 } ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
+    {
+      "UpstreamPathTemplate": "/rewards/{everything}",
+      "UpstreamHttpMethod": [ "PATCH" ],
       "DownstreamPathTemplate": "/api/rewards/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5003 } ],
@@ -97,7 +212,7 @@
     },
     {
       "UpstreamPathTemplate": "/admin/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "PATCH" ],
+      "UpstreamHttpMethod": [ "GET" ],
       "DownstreamPathTemplate": "/api/admin/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5004 } ],
@@ -105,17 +220,124 @@
         "AuthenticationProviderKey": "Bearer"
       }
     },
-
+    {
+      "UpstreamPathTemplate": "/admin/{everything}",
+      "UpstreamHttpMethod": [ "POST" ],
+      "DownstreamPathTemplate": "/api/admin/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5004 } ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
+    {
+      "UpstreamPathTemplate": "/admin/{everything}",
+      "UpstreamHttpMethod": [ "PUT" ],
+      "DownstreamPathTemplate": "/api/admin/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5004 } ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
+    {
+      "UpstreamPathTemplate": "/admin/{everything}",
+      "UpstreamHttpMethod": [ "DELETE" ],
+      "DownstreamPathTemplate": "/api/admin/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5004 } ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
+    {
+      "UpstreamPathTemplate": "/admin/{everything}",
+      "UpstreamHttpMethod": [ "PATCH" ],
+      "DownstreamPathTemplate": "/api/admin/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5004 } ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
     {
       "UpstreamPathTemplate": "/api/auth/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "PATCH" ],
+      "UpstreamHttpMethod": [ "GET" ],
+      "DownstreamPathTemplate": "/api/auth/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5001 } ]
+    },
+    {
+      "UpstreamPathTemplate": "/api/auth/{everything}",
+      "UpstreamHttpMethod": [ "POST" ],
+      "DownstreamPathTemplate": "/api/auth/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5001 } ]
+    },
+    {
+      "UpstreamPathTemplate": "/api/auth/{everything}",
+      "UpstreamHttpMethod": [ "PUT" ],
+      "DownstreamPathTemplate": "/api/auth/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5001 } ]
+    },
+    {
+      "UpstreamPathTemplate": "/api/auth/{everything}",
+      "UpstreamHttpMethod": [ "DELETE" ],
+      "DownstreamPathTemplate": "/api/auth/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5001 } ]
+    },
+    {
+      "UpstreamPathTemplate": "/api/auth/{everything}",
+      "UpstreamHttpMethod": [ "PATCH" ],
       "DownstreamPathTemplate": "/api/auth/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5001 } ]
     },
     {
       "UpstreamPathTemplate": "/api/profile/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "PATCH" ],
+      "UpstreamHttpMethod": [ "GET" ],
+      "DownstreamPathTemplate": "/api/profile/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5001 } ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
+    {
+      "UpstreamPathTemplate": "/api/profile/{everything}",
+      "UpstreamHttpMethod": [ "POST" ],
+      "DownstreamPathTemplate": "/api/profile/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5001 } ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
+    {
+      "UpstreamPathTemplate": "/api/profile/{everything}",
+      "UpstreamHttpMethod": [ "PUT" ],
+      "DownstreamPathTemplate": "/api/profile/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5001 } ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
+    {
+      "UpstreamPathTemplate": "/api/profile/{everything}",
+      "UpstreamHttpMethod": [ "DELETE" ],
+      "DownstreamPathTemplate": "/api/profile/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5001 } ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
+    {
+      "UpstreamPathTemplate": "/api/profile/{everything}",
+      "UpstreamHttpMethod": [ "PATCH" ],
       "DownstreamPathTemplate": "/api/profile/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5001 } ],
@@ -125,7 +347,47 @@
     },
     {
       "UpstreamPathTemplate": "/api/wallet/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "PATCH" ],
+      "UpstreamHttpMethod": [ "GET" ],
+      "DownstreamPathTemplate": "/api/wallet/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5002 } ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
+    {
+      "UpstreamPathTemplate": "/api/wallet/{everything}",
+      "UpstreamHttpMethod": [ "POST" ],
+      "DownstreamPathTemplate": "/api/wallet/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5002 } ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
+    {
+      "UpstreamPathTemplate": "/api/wallet/{everything}",
+      "UpstreamHttpMethod": [ "PUT" ],
+      "DownstreamPathTemplate": "/api/wallet/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5002 } ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
+    {
+      "UpstreamPathTemplate": "/api/wallet/{everything}",
+      "UpstreamHttpMethod": [ "DELETE" ],
+      "DownstreamPathTemplate": "/api/wallet/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5002 } ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
+    {
+      "UpstreamPathTemplate": "/api/wallet/{everything}",
+      "UpstreamHttpMethod": [ "PATCH" ],
       "DownstreamPathTemplate": "/api/wallet/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5002 } ],
@@ -145,7 +407,47 @@
     },
     {
       "UpstreamPathTemplate": "/api/rewards/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "PATCH" ],
+      "UpstreamHttpMethod": [ "GET" ],
+      "DownstreamPathTemplate": "/api/rewards/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5003 } ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
+    {
+      "UpstreamPathTemplate": "/api/rewards/{everything}",
+      "UpstreamHttpMethod": [ "POST" ],
+      "DownstreamPathTemplate": "/api/rewards/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5003 } ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
+    {
+      "UpstreamPathTemplate": "/api/rewards/{everything}",
+      "UpstreamHttpMethod": [ "PUT" ],
+      "DownstreamPathTemplate": "/api/rewards/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5003 } ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
+    {
+      "UpstreamPathTemplate": "/api/rewards/{everything}",
+      "UpstreamHttpMethod": [ "DELETE" ],
+      "DownstreamPathTemplate": "/api/rewards/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5003 } ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
+    {
+      "UpstreamPathTemplate": "/api/rewards/{everything}",
+      "UpstreamHttpMethod": [ "PATCH" ],
       "DownstreamPathTemplate": "/api/rewards/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5003 } ],
@@ -155,7 +457,47 @@
     },
     {
       "UpstreamPathTemplate": "/api/admin/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "PATCH" ],
+      "UpstreamHttpMethod": [ "GET" ],
+      "DownstreamPathTemplate": "/api/admin/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5004 } ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
+    {
+      "UpstreamPathTemplate": "/api/admin/{everything}",
+      "UpstreamHttpMethod": [ "POST" ],
+      "DownstreamPathTemplate": "/api/admin/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5004 } ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
+    {
+      "UpstreamPathTemplate": "/api/admin/{everything}",
+      "UpstreamHttpMethod": [ "PUT" ],
+      "DownstreamPathTemplate": "/api/admin/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5004 } ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
+    {
+      "UpstreamPathTemplate": "/api/admin/{everything}",
+      "UpstreamHttpMethod": [ "DELETE" ],
+      "DownstreamPathTemplate": "/api/admin/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5004 } ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
+    {
+      "UpstreamPathTemplate": "/api/admin/{everything}",
+      "UpstreamHttpMethod": [ "PATCH" ],
       "DownstreamPathTemplate": "/api/admin/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5004 } ],

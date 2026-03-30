@@ -138,6 +138,44 @@ public class AuthService
         }
     }
 
+    /// <summary>
+    /// Generates a temporary password for the account with the given email and
+    /// returns it in the response. In production, replace the return value with
+    /// an email-dispatch call (e.g. via SendGrid / RabbitMQ event) instead of
+    /// sending the password in plain text.
+    /// </summary>
+    public async Task<ApiResponse<string>> ForgotPasswordAsync(ForgotPasswordDto dto)
+    {
+        var user = await _userRepository.GetUserByEmailAsync(dto.Email);
+
+        // Always return the same generic message to avoid user-enumeration attacks.
+        const string safeMessage = "If an account with that email exists, a temporary password has been sent.";
+
+        if (user == null || !user.IsActive)
+        {
+            return ApiResponse<string>.Ok(safeMessage);
+        }
+
+        // Generate a secure random temporary password (12 chars).
+        var tempPassword = Convert.ToBase64String(Guid.NewGuid().ToByteArray())[..12];
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(tempPassword);
+
+        // Revoke all existing refresh tokens so old sessions are invalidated.
+        var activeTokens = await _refreshTokenRepository.GetActiveTokensByUserIdAsync(user.UserId);
+        foreach (var token in activeTokens)
+        {
+            token.IsRevoked = true;
+        }
+
+        await _userRepository.SaveChangesAsync();
+        await _refreshTokenRepository.SaveChangesAsync();
+
+        // TODO: dispatch an email with tempPassword instead of returning it here.
+        // For development, we return it directly so it can be tested without an
+        // email service configured. Remove this before going to production.
+        return ApiResponse<string>.Ok($"Temporary password: {tempPassword}", safeMessage);
+    }
+
     public async Task<ApiResponse<object>> GetProfileAsync(Guid userId)
     {
         var user = await _userRepository.GetUserByIdAsync(userId);
