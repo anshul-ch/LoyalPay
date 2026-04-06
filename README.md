@@ -6,7 +6,7 @@ LoyalPay is a backend project built using .NET microservices. It was created as 
 
 ## Project Structure
 
-The backend is split into five separate APIs and one shared library. Each API runs independently and has its own database.
+All .NET code lives under `backend/`. The backend is split into five separate APIs and one shared library. Each API runs independently and has its own database.
 
 ```
 backend/
@@ -16,6 +16,16 @@ backend/
     LoyalPay.AdminService       Admin dashboard, KYC review, campaigns
     LoyalPay.Gateway            Ocelot API gateway (single entry point)
     LoyalPay.Shared             Shared DTOs, events, and extension methods
+```
+
+Each business service (`AuthService`, `WalletService`, `RewardsService`, `AdminService`) follows a single-project Clean Architecture folder layout:
+
+```
+<Service>/
+    Domain/                       Entities and domain interfaces
+    Application/                  DTOs, service interfaces, service implementations
+    Infrastructure/               Persistence (DbContext, migrations, repositories), messaging consumers
+    Presentation/                 API controllers
 ```
 
 ---
