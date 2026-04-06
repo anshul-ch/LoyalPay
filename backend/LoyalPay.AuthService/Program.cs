@@ -1,6 +1,8 @@
-using LoyalPay.AuthService.Data;
-using LoyalPay.AuthService.Repositories;
-using LoyalPay.AuthService.Services;
+using LoyalPay.AuthService.Application.Interfaces;
+using LoyalPay.AuthService.Application.Services;
+using LoyalPay.AuthService.Domain.Interfaces;
+using LoyalPay.AuthService.Infrastructure.Persistence.DbContext;
+using LoyalPay.AuthService.Infrastructure.Persistence.Repositories;
 using LoyalPay.Shared.Extensions;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
@@ -23,19 +25,28 @@ var rabbitPass  = builder.Configuration["RABBITMQ_PASS"] ?? builder.Configuratio
 
 builder.Services.AddLoyalPayControllers();
 builder.Services.AddLoyalPaySwagger("LoyalPay Auth API");
+
+// Auth
+
 builder.Services.AddLoyalPayJwt(jwtSecret, jwtIssuer, jwtAudience);
 builder.Services.AddLoyalPayCors();
+
+// DbContext
 
 builder.Services.AddDbContext<AuthDbContext>(options =>
 {
     options.UseSqlServer(connectionString);
 });
 
+// Services
+
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 builder.Services.AddScoped<IKycSubmissionRepository, KycSubmissionRepository>();
-builder.Services.AddScoped<LoyalPay.AuthService.Services.AuthService>();
-builder.Services.AddScoped<JwtHelper>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IJwtHelper, JwtHelper>();
+
+// MassTransit
 
 builder.Services.AddMassTransit(x =>
 {

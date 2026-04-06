@@ -1,8 +1,10 @@
-using LoyalPay.RewardsService.Consumers;
-using LoyalPay.RewardsService.Data;
-using LoyalPay.RewardsService.Models;
-using LoyalPay.RewardsService.Repositories;
-using LoyalPay.RewardsService.Services;
+using LoyalPay.RewardsService.Application.Interfaces;
+using LoyalPay.RewardsService.Application.Services;
+using LoyalPay.RewardsService.Domain.Entities;
+using LoyalPay.RewardsService.Domain.Interfaces;
+using LoyalPay.RewardsService.Infrastructure.Messaging;
+using LoyalPay.RewardsService.Infrastructure.Persistence.DbContext;
+using LoyalPay.RewardsService.Infrastructure.Persistence.Repositories;
 using LoyalPay.Shared.Extensions;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
@@ -25,15 +27,25 @@ var rabbitPass  = builder.Configuration["RABBITMQ_PASS"] ?? builder.Configuratio
 
 builder.Services.AddLoyalPayControllers();
 builder.Services.AddLoyalPaySwagger("LoyalPay Rewards API");
+
+// Auth
+
 builder.Services.AddLoyalPayJwt(jwtSecret, jwtIssuer, jwtAudience);
 builder.Services.AddLoyalPayCors();
 
+// DbContext
+
 builder.Services.AddDbContext<RewardsDbContext>(o => o.UseSqlServer(connectionString));
+
+// Services
+
 builder.Services.AddScoped<IRewardAccountRepository, RewardAccountRepository>();
 builder.Services.AddScoped<ICatalogItemRepository, CatalogItemRepository>();
 builder.Services.AddScoped<IRedemptionRepository, RedemptionRepository>();
 builder.Services.AddScoped<IRewardTransactionRepository, RewardTransactionRepository>();
-builder.Services.AddScoped<LoyalPay.RewardsService.Services.RewardsService>();
+builder.Services.AddScoped<IRewardsService, RewardsService>();
+
+// MassTransit
 
 builder.Services.AddMassTransit(x =>
 {

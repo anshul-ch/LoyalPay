@@ -1,8 +1,10 @@
 using LoyalPay.Shared.Extensions;
-using LoyalPay.WalletService.Consumers;
-using LoyalPay.WalletService.Data;
-using LoyalPay.WalletService.Repositories;
-using LoyalPay.WalletService.Services;
+using LoyalPay.WalletService.Application.Interfaces;
+using LoyalPay.WalletService.Application.Services;
+using LoyalPay.WalletService.Domain.Interfaces;
+using LoyalPay.WalletService.Infrastructure.Messaging;
+using LoyalPay.WalletService.Infrastructure.Persistence.DbContext;
+using LoyalPay.WalletService.Infrastructure.Persistence.Repositories;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Infrastructure;
@@ -25,16 +27,26 @@ var rabbitPass  = builder.Configuration["RABBITMQ_PASS"] ?? builder.Configuratio
 
 builder.Services.AddLoyalPayControllers();
 builder.Services.AddLoyalPaySwagger("LoyalPay Wallet API");
+
+// Auth
+
 builder.Services.AddLoyalPayJwt(jwtSecret, jwtIssuer, jwtAudience);
 builder.Services.AddLoyalPayCors();
 
+// DbContext
+
 builder.Services.AddDbContext<WalletDbContext>(o => o.UseSqlServer(connectionString));
+
+// Services
+
 builder.Services.AddScoped<IWalletAccountRepository, WalletAccountRepository>();
 builder.Services.AddScoped<ILedgerEntryRepository, LedgerEntryRepository>();
 builder.Services.AddScoped<ITopUpRequestRepository, TopUpRequestRepository>();
 builder.Services.AddScoped<ITransferRequestRepository, TransferRequestRepository>();
-builder.Services.AddScoped<LoyalPay.WalletService.Services.WalletService>();
-builder.Services.AddScoped<StatementService>();
+builder.Services.AddScoped<IWalletService, WalletService>();
+builder.Services.AddScoped<IStatementService, StatementService>();
+
+// MassTransit
 
 builder.Services.AddMassTransit(x =>
 {

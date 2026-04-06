@@ -1,5 +1,6 @@
-using LoyalPay.AdminService.Data;
-using LoyalPay.AdminService.Services;
+using LoyalPay.AdminService.Application.Interfaces;
+using LoyalPay.AdminService.Application.Services;
+using LoyalPay.AdminService.Infrastructure.Persistence.DbContext;
 using LoyalPay.Shared.Extensions;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
@@ -22,13 +23,23 @@ var rabbitPass  = builder.Configuration["RABBITMQ_PASS"] ?? builder.Configuratio
 
 builder.Services.AddLoyalPayControllers();
 builder.Services.AddLoyalPaySwagger("LoyalPay Admin API");
+
+// Auth
+
 builder.Services.AddLoyalPayJwt(jwtSecret, jwtIssuer, jwtAudience);
 builder.Services.AddLoyalPayCors();
+
+// DbContext
 
 builder.Services.AddDbContext<AdminAuthDbContext>(o => o.UseSqlServer(authConnectionString));
 builder.Services.AddDbContext<AdminWalletDbContext>(o => o.UseSqlServer(walletConnectionString));
 builder.Services.AddDbContext<AdminRewardsDbContext>(o => o.UseSqlServer(rewardsConnectionString));
-builder.Services.AddScoped<LoyalPay.AdminService.Services.AdminService>();
+
+// Services
+
+builder.Services.AddScoped<IAdminService, AdminService>();
+
+// MassTransit
 
 builder.Services.AddMassTransit(x =>
 {
