@@ -32,7 +32,18 @@ public class WalletService : IWalletService
         var wallet = await _walletRepository.GetWalletByUserIdAsync(userId);
         if (wallet == null)
         {
-            return ApiResponse<object>.Fail("Wallet not found.");
+            // Auto-create wallet if it doesn't exist (fallback mechanism)
+            wallet = new WalletAccount
+            {
+                UserId = userId,
+                Balance = 0,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            
+            await _walletRepository.AddWalletAsync(wallet);
+            await _walletRepository.SaveChangesAsync();
         }
 
         var data = new
@@ -51,7 +62,18 @@ public class WalletService : IWalletService
         var wallet = await _walletRepository.GetWalletByUserIdAsync(userId);
         if (wallet == null)
         {
-            return ApiResponse<object>.Fail("Wallet not found.");
+            // Auto-create wallet if it doesn't exist (fallback mechanism)
+            wallet = new WalletAccount
+            {
+                UserId = userId,
+                Balance = 0,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            
+            await _walletRepository.AddWalletAsync(wallet);
+            await _walletRepository.SaveChangesAsync();
         }
 
         var todayStart = DateTime.UtcNow.Date;
@@ -135,13 +157,35 @@ public class WalletService : IWalletService
         var senderWallet = await _walletRepository.GetWalletByUserIdAsync(senderUserId);
         if (senderWallet == null)
         {
-            return ApiResponse<string>.Fail("Sender wallet not found.");
+            // Auto-create sender wallet if it doesn't exist
+            senderWallet = new WalletAccount
+            {
+                UserId = senderUserId,
+                Balance = 0,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            
+            await _walletRepository.AddWalletAsync(senderWallet);
+            await _walletRepository.SaveChangesAsync();
         }
 
         var receiverWallet = await _walletRepository.GetWalletByUserIdAsync(dto.ReceiverUserId);
         if (receiverWallet == null)
         {
-            return ApiResponse<string>.Fail("Receiver wallet not found.");
+            // Auto-create receiver wallet if it doesn't exist
+            receiverWallet = new WalletAccount
+            {
+                UserId = dto.ReceiverUserId,
+                Balance = 0,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            
+            await _walletRepository.AddWalletAsync(receiverWallet);
+            await _walletRepository.SaveChangesAsync();
         }
 
         if (senderWallet.Balance < dto.Amount)
@@ -208,7 +252,18 @@ public class WalletService : IWalletService
         var wallet = await _walletRepository.GetWalletByUserIdAsync(userId);
         if (wallet == null)
         {
-            return ApiResponse<object>.Fail("Wallet not found.");
+            // Auto-create wallet if it doesn't exist (fallback mechanism)
+            wallet = new WalletAccount
+            {
+                UserId = userId,
+                Balance = 0,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            
+            await _walletRepository.AddWalletAsync(wallet);
+            await _walletRepository.SaveChangesAsync();
         }
 
         var total = await _ledgerRepository.GetTransactionCountByWalletIdAsync(wallet.WalletId);

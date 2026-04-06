@@ -27,6 +27,8 @@ public class UserRegisteredConsumer : IConsumer<UserRegisteredEvent>
         wallet.UserId = context.Message.UserId;
         wallet.Balance = 0;
         wallet.IsActive = true;
+        wallet.CreatedAt = DateTime.UtcNow;
+        wallet.UpdatedAt = DateTime.UtcNow;
 
         _db.WalletAccounts.Add(wallet);
         await _db.SaveChangesAsync();

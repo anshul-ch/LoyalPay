@@ -27,6 +27,8 @@ public class UserRegisteredConsumer : IConsumer<UserRegisteredEvent>
         account.UserId = context.Message.UserId;
         account.TotalPoints = 0;
         account.Tier = "Silver";
+        account.CreatedAt = DateTime.UtcNow;
+        account.UpdatedAt = DateTime.UtcNow;
 
         _db.RewardAccounts.Add(account);
         await _db.SaveChangesAsync();

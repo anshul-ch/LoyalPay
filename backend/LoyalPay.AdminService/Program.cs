@@ -63,7 +63,17 @@ using (var scope = app.Services.CreateScope())
     rewardsDb.Database.Migrate();
 
     var authDb = scope.ServiceProvider.GetRequiredService<AdminAuthDbContext>();
-    SeedData.EnsureAdmin(authDb);
+    // Ensure the auth database exists (note: AdminService has read-only access)
+    try
+    {
+        authDb.Database.EnsureCreated();
+        SeedData.EnsureAdmin(authDb);
+    }
+    catch (Exception ex)
+    {
+        // Log the exception but don't fail the application start
+        Console.WriteLine($"Warning: Could not seed admin data: {ex.Message}");
+    }
 }
 
 app.UseSwagger();
