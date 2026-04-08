@@ -222,12 +222,6 @@ Each service auto-migrates its database on startup — no manual `dotnet ef` com
 
 ---
 
-## KYC Storage
-
-Documents are stored as `varbinary(max)` in SQL Server (no filesystem writes). The `POST /api/profile/kyc` endpoint accepts a base64-encoded file in the request body. Admins and users can download the raw file via the `/document` endpoints.
-
----
-
 ## Known Limitations
 
 - **Payment gateway** — top-up is simulated. Call `finish` with `{ success: true }` to credit the wallet. In production this would be a real payment provider webhook.
