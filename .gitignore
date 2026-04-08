@@ -17,11 +17,10 @@ dist/
 # Environment Variables & Secrets - DO NOT COMMIT THESE
 .env
 *.env
-!.env.example
-appsettings.json
 appsettings.Development.json
 appsettings.Production.json
 appsettings.*.json
+appsettings.json
 
 # Logs
 *.log
@@ -31,23 +30,16 @@ appsettings.*.json
 Thumbs.db
 
 # Local reference/planning docs (keep local, never commit)
-PROJECT_REFERENCE.md
-PROJECT_STATE.md
-CONFIGURATION.md
-LoyalPay_Design_Document.md
-LoyalPay_Prompt_Plan_v5.md
+
 *.docx
 .idea/
 
 # Status / planning markdown files — local only
-BACKEND_STATUS.md
-FRONTEND_STATUS.md
-*.status.md
+*.md
 
 # Test scripts — local only
-test_backend.ps1
-test_frontend.ps1
-*.test.ps1
+
+*.ps1
 
 # Architecture and documentation files (local reference, don't commit)
 architecture-docs/
