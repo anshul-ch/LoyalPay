@@ -64,10 +64,16 @@ builder.Services.AddMassTransit(x =>
 
 var app = builder.Build();
 
+// Auto-migrate on startup so the DB is always up to date.
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
+    db.Database.Migrate();
+}
+
 app.UseSwagger();
 app.UseSwaggerUI();
 app.UseCors(ServiceExtensions.CorsPolicyName);
-app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

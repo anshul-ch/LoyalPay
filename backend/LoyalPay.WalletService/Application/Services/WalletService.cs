@@ -188,14 +188,19 @@ public class WalletService : IWalletService
             await _walletRepository.SaveChangesAsync();
         }
 
-        if (senderWallet.Balance < dto.Amount)
+        if (senderWallet.WalletId == receiverWallet.WalletId)
         {
-            return ApiResponse<string>.Fail("Insufficient balance.");
+            return ApiResponse<string>.Fail("Cannot transfer to your own wallet.");
         }
 
         if (dto.Amount <= 0)
         {
-            return ApiResponse<string>.Fail("Invalid amount.");
+            return ApiResponse<string>.Fail("Transfer amount must be greater than zero.");
+        }
+
+        if (senderWallet.Balance < dto.Amount)
+        {
+            return ApiResponse<string>.Fail("Insufficient balance.");
         }
 
         var transferRequest = new TransferRequest();

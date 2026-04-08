@@ -45,6 +45,11 @@ public class AuthDbContext : Microsoft.EntityFrameworkCore.DbContext
             .Property(x => x.SubmittedAt)
             .HasDefaultValueSql("GETUTCDATE()");
 
+        // FileData stored as varbinary(max) — no size limit annotation needed here.
+        modelBuilder.Entity<KycSubmission>()
+            .Property(x => x.FileData)
+            .HasColumnType("varbinary(max)");
+
         modelBuilder.Entity<KycSubmission>()
             .HasIndex(x => x.UserId);
 

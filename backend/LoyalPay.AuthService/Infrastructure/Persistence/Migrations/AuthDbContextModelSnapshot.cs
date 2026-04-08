@@ -29,6 +29,12 @@ namespace LoyalPay.AuthService.Infrastructure.Persistence.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasDefaultValueSql("NEWID()");
 
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasDefaultValue("image/jpeg");
+
                     b.Property<string>("DocumentNumber")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -39,9 +45,14 @@ namespace LoyalPay.AuthService.Infrastructure.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<string>("FilePath")
+                    b.Property<byte[]>("FileData")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
 
                     b.Property<string>("RejectionNote")
                         .HasMaxLength(500)
@@ -135,9 +146,6 @@ namespace LoyalPay.AuthService.Infrastructure.Persistence.Migrations
                     b.Property<string>("KycDocumentType")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("KycFilePath")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("KycRejectionNote")
                         .HasMaxLength(500)

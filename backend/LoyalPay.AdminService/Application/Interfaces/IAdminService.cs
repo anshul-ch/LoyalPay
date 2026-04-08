@@ -6,18 +6,31 @@ namespace LoyalPay.AdminService.Application.Interfaces;
 
 public interface IAdminService
 {
-    Task<ApiResponse<List<object>>> GetPendingKycAsync();
-    /// <summary>
-    /// Applies KYC decision to Auth DB and writes an audit record in Rewards DB.
-    /// </summary>
+    Task<ApiResponse<object>> GetDashboardAsync();
+    Task<ApiResponse<List<object>>> GetUsersAsync();
 
-    Task<ApiResponse<string>> ReviewKycAsync(Guid userId, KycReviewDto dto, Guid adminUserId);
+    /// <summary>
+    /// Returns all users with Pending KYC status, including their latest submission metadata.
+    /// </summary>
+    Task<ApiResponse<List<object>>> GetPendingKycAsync();
+
+    /// <summary>
+    /// Returns all KYC submissions for a specific user (full history).
+    /// </summary>
+    Task<ApiResponse<List<object>>> GetKycSubmissionsByUserAsync(Guid userId);
+
+    /// <summary>
+    /// Returns the raw document bytes for a specific KYC submission.
+    /// </summary>
+    Task<(byte[] Data, string ContentType, string FileName)?> GetKycDocumentAsync(Guid submissionId);
+
+    /// <summary>
+    /// Applies a KYC decision to the Auth DB and writes an audit record in the Rewards DB.
+    /// </summary>
+    Task<ApiResponse<string>> ReviewKycAsync(Guid submissionId, KycReviewDto dto, Guid adminUserId);
 
     /// <summary>
     /// Creates a campaign and records the action in the admin audit log.
     /// </summary>
-
     Task<ApiResponse<Campaign>> CreateCampaignAsync(CampaignDto dto, Guid adminUserId);
-    Task<ApiResponse<object>> GetDashboardAsync();
-    Task<ApiResponse<List<object>>> GetUsersAsync();
 }

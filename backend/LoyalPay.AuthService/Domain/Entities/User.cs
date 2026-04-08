@@ -40,8 +40,6 @@ public class User
     [MaxLength(100)]
     public string? KycDocumentNumber { get; set; }
 
-    public string? KycFilePath { get; set; }
-
     [MaxLength(500)]
     public string? KycRejectionNote { get; set; }
 

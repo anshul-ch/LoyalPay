@@ -1,5 +1,6 @@
 using CsvHelper;
 using LoyalPay.WalletService.Application.Interfaces;
+using LoyalPay.WalletService.Domain.Entities;
 using LoyalPay.WalletService.Infrastructure.Persistence.DbContext;
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
@@ -25,19 +26,19 @@ public class StatementService : IStatementService
     public async Task<byte[]> GetPdfAsync(Guid userId, DateTime from, DateTime to)
     {
         var wallet = await _db.WalletAccounts.FirstOrDefaultAsync(w => w.UserId == userId);
-        if (wallet == null)
-        {
-            return Array.Empty<byte>();
-        }
 
+        // Expand the date range to cover the full day boundaries (start of 'from' to end of 'to').
         var startOfDay = from.Date;
-        var endOfDay = to.Date.AddDays(1).AddSeconds(-1);
+        var endOfDay   = to.Date.AddDays(1).AddSeconds(-1);
 
-        var entries = await _db.LedgerEntries
-            .Where(e => e.WalletId == wallet.WalletId && e.CreatedAt >= startOfDay && e.CreatedAt <= endOfDay)
-            .OrderByDescending(e => e.CreatedAt)
-            .ToListAsync();
+        var entries = wallet == null
+            ? new List<LedgerEntry>()
+            : await _db.LedgerEntries
+                .Where(e => e.WalletId == wallet.WalletId && e.CreatedAt >= startOfDay && e.CreatedAt <= endOfDay)
+                .OrderByDescending(e => e.CreatedAt)
+                .ToListAsync();
 
+        // QuestPDF Community license — free for non-commercial use.
         QuestPDF.Settings.License = LicenseType.Community;
 
         return Document.Create(container =>
@@ -53,11 +54,11 @@ public class StatementService : IStatementService
                 {
                     table.ColumnsDefinition(columns =>
                     {
-                        columns.RelativeColumn(2);
-                        columns.RelativeColumn(1);
-                        columns.RelativeColumn(1);
-                        columns.RelativeColumn(1);
-                        columns.RelativeColumn(3);
+                        columns.RelativeColumn(2);  // Date
+                        columns.RelativeColumn(1);  // Type
+                        columns.RelativeColumn(1);  // Amount
+                        columns.RelativeColumn(1);  // Balance
+                        columns.RelativeColumn(3);  // Description
                     });
 
                     table.Header(header =>
@@ -87,18 +88,16 @@ public class StatementService : IStatementService
     public async Task<byte[]> GetCsvAsync(Guid userId, DateTime from, DateTime to)
     {
         var wallet = await _db.WalletAccounts.FirstOrDefaultAsync(w => w.UserId == userId);
-        if (wallet == null)
-        {
-            return Array.Empty<byte>();
-        }
 
         var startOfDay = from.Date;
-        var endOfDay = to.Date.AddDays(1).AddSeconds(-1);
+        var endOfDay   = to.Date.AddDays(1).AddSeconds(-1);
 
-        var entries = await _db.LedgerEntries
-            .Where(e => e.WalletId == wallet.WalletId && e.CreatedAt >= startOfDay && e.CreatedAt <= endOfDay)
-            .OrderByDescending(e => e.CreatedAt)
-            .ToListAsync();
+        var entries = wallet == null
+            ? new List<LedgerEntry>()
+            : await _db.LedgerEntries
+                .Where(e => e.WalletId == wallet.WalletId && e.CreatedAt >= startOfDay && e.CreatedAt <= endOfDay)
+                .OrderByDescending(e => e.CreatedAt)
+                .ToListAsync();
 
         using var ms = new MemoryStream();
         using var writer = new StreamWriter(ms);

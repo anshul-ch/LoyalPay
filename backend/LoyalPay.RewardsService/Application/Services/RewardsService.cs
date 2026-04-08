@@ -112,9 +112,20 @@ public class RewardsService : IRewardsService
             return ApiResponse<string>.Fail("Insufficient points for this redemption.");
         }
 
+        // Decrement stock for finite-stock items (-1 means unlimited).
+        if (item.Stock > 0)
+        {
+            item.Stock -= 1;
+        }
+        else if (item.Stock == 0)
+        {
+            return ApiResponse<string>.Fail("This item is out of stock.");
+        }
+
         // Deduction and ledger-like records are committed in the same save path.
 
         account.TotalPoints = account.TotalPoints - item.PointsCost;
+        account.Tier = GetTier(account.TotalPoints);
         account.UpdatedAt = DateTime.UtcNow;
 
         var redemption = new Redemption();

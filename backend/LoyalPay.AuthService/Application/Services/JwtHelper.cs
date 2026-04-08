@@ -10,8 +10,8 @@ namespace LoyalPay.AuthService.Application.Services;
 
 /// <summary>
 /// Stateless JWT token creation using configuration-backed issuer, audience, and signing key.
+/// Throws <see cref="InvalidOperationException"/> on startup if any required setting is missing.
 /// </summary>
-
 public class JwtHelper : IJwtHelper
 {
     private readonly string _secret;

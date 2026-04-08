@@ -406,6 +406,13 @@
       }
     },
     {
+      "UpstreamPathTemplate": "/api/rewards/catalog",
+      "UpstreamHttpMethod": [ "GET" ],
+      "DownstreamPathTemplate": "/api/rewards/catalog",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5003 } ]
+    },
+    {
       "UpstreamPathTemplate": "/api/rewards/{everything}",
       "UpstreamHttpMethod": [ "GET" ],
       "DownstreamPathTemplate": "/api/rewards/{everything}",

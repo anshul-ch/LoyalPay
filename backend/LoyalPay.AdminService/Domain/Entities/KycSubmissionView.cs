@@ -1,44 +1,33 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace LoyalPay.AuthService.Domain.Entities;
+namespace LoyalPay.AdminService.Domain.Entities;
 
+// Read-only view of the KycSubmissions table owned by AuthService.
 [Table("KycSubmissions")]
-public class KycSubmission
+public class KycSubmissionView
 {
     [Key]
     public Guid SubmissionId { get; set; }
 
     public Guid UserId { get; set; }
 
-    [Required]
     [MaxLength(100)]
     public string DocumentType { get; set; } = string.Empty;
 
-    [Required]
     [MaxLength(100)]
     public string DocumentNumber { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Raw document bytes stored directly in the database.
-    /// </summary>
     public byte[] FileData { get; set; } = Array.Empty<byte>();
 
-    /// <summary>
-    /// Original filename as uploaded by the user (e.g. "aadhaar.jpg").
-    /// </summary>
     [MaxLength(255)]
     public string FileName { get; set; } = string.Empty;
 
-    /// <summary>
-    /// MIME type of the uploaded file (e.g. "image/jpeg").
-    /// </summary>
     [MaxLength(100)]
-    public string ContentType { get; set; } = "image/jpeg";
+    public string ContentType { get; set; } = string.Empty;
 
-    [Required]
     [MaxLength(50)]
-    public string Status { get; set; } = "Pending";
+    public string Status { get; set; } = string.Empty;
 
     [MaxLength(500)]
     public string? RejectionNote { get; set; }

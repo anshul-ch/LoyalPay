@@ -20,15 +20,17 @@ public class TopUpCompletedConsumer : IConsumer<TopUpCompletedEvent>
         var account = await _db.RewardAccounts.FirstOrDefaultAsync(r => r.UserId == context.Message.UserId);
         if (account == null)
         {
+            // Reward account should have been created by UserRegisteredConsumer.
+            // If it's missing, skip silently — points can't be awarded without an account.
             return;
         }
 
-        // Base points: 1 point for every ₹100 spent
+        // Base points: 1 point for every ₹100 topped up.
         var points = (int)Math.Floor(context.Message.Amount / 100);
 
-        // First top-up bonus: extra 100 points
+        // First top-up bonus: extra 100 points if the user has never earned before.
         var isFirstTopUp = !await _db.RewardTransactions
-            .AnyAsync(t => t.UserId == context.Message.UserId && t.TxnType == "EARN");
+            .AnyAsync(t => t.UserId == context.Message.UserId && t.TxnType == "Earned");
 
         if (isFirstTopUp)
         {
@@ -57,7 +59,7 @@ public class TopUpCompletedConsumer : IConsumer<TopUpCompletedEvent>
 
         var transaction = new RewardTransaction();
         transaction.UserId = context.Message.UserId;
-        transaction.TxnType = "EARN";
+        transaction.TxnType = "Earned";
         transaction.Points = points;
         transaction.Description = description;
         transaction.CreatedAt = DateTime.UtcNow;
@@ -77,7 +79,7 @@ public class TopUpCompletedConsumer : IConsumer<TopUpCompletedEvent>
 
             var bonusTransaction = new RewardTransaction();
             bonusTransaction.UserId = context.Message.UserId;
-            bonusTransaction.TxnType = "BONUS";
+            bonusTransaction.TxnType = "Earned";
             bonusTransaction.Points = campaign.BonusPoints;
             bonusTransaction.Description = "Bonus from campaign: " + campaign.Name;
             bonusTransaction.CreatedAt = DateTime.UtcNow;

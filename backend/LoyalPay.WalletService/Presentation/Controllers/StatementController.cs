@@ -29,16 +29,24 @@ public class StatementController : ControllerBase
     }
 
     [HttpGet("pdf")]
-    public async Task<IActionResult> Pdf([FromQuery] DateTime from, [FromQuery] DateTime to)
+    public async Task<IActionResult> Pdf([FromQuery] DateTime? from, [FromQuery] DateTime? to)
     {
-        var bytes = await _statementService.GetPdfAsync(GetUserId(), from, to);
+        // Default to the last 30 days when no range is provided.
+        var effectiveTo   = to   ?? DateTime.UtcNow;
+        var effectiveFrom = from ?? effectiveTo.AddDays(-30);
+
+        var bytes = await _statementService.GetPdfAsync(GetUserId(), effectiveFrom, effectiveTo);
         return File(bytes, "application/pdf", "loyalpay-statement.pdf");
     }
 
     [HttpGet("csv")]
-    public async Task<IActionResult> Csv([FromQuery] DateTime from, [FromQuery] DateTime to)
+    public async Task<IActionResult> Csv([FromQuery] DateTime? from, [FromQuery] DateTime? to)
     {
-        var bytes = await _statementService.GetCsvAsync(GetUserId(), from, to);
+        // Default to the last 30 days when no range is provided.
+        var effectiveTo   = to   ?? DateTime.UtcNow;
+        var effectiveFrom = from ?? effectiveTo.AddDays(-30);
+
+        var bytes = await _statementService.GetCsvAsync(GetUserId(), effectiveFrom, effectiveTo);
         return File(bytes, "text/csv", "loyalpay-statement.csv");
     }
 }

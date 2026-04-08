@@ -39,6 +39,16 @@ LoyalPay_Prompt_Plan_v5.md
 *.docx
 .idea/
 
+# Status / planning markdown files — local only
+BACKEND_STATUS.md
+FRONTEND_STATUS.md
+*.status.md
+
+# Test scripts — local only
+test_backend.ps1
+test_frontend.ps1
+*.test.ps1
+
 # Architecture and documentation files (local reference, don't commit)
 architecture-docs/
 scripts/

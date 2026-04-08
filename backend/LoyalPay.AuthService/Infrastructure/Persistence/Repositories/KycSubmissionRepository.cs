@@ -19,6 +19,23 @@ public class KycSubmissionRepository : IKycSubmissionRepository
         return await _db.KycSubmissions.FindAsync(id);
     }
 
+    public async Task<KycSubmission?> GetLatestByUserIdAsync(Guid userId)
+    {
+        // Most recent submission ordered by submitted date descending.
+        return await _db.KycSubmissions
+            .Where(k => k.UserId == userId)
+            .OrderByDescending(k => k.SubmittedAt)
+            .FirstOrDefaultAsync();
+    }
+
+    public async Task<List<KycSubmission>> GetAllByUserIdAsync(Guid userId)
+    {
+        return await _db.KycSubmissions
+            .Where(k => k.UserId == userId)
+            .OrderByDescending(k => k.SubmittedAt)
+            .ToListAsync();
+    }
+
     public async Task<List<KycSubmission>> GetPendingKycSubmissionsAsync()
     {
         return await _db.KycSubmissions

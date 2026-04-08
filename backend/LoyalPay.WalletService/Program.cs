@@ -70,6 +70,12 @@ builder.Services.AddMassTransit(x =>
 var app = builder.Build();
 QuestPDF.Settings.License = LicenseType.Community;
 
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<WalletDbContext>();
+    db.Database.Migrate();
+}
+
 app.UseSwagger();
 app.UseSwaggerUI();
 app.UseCors(ServiceExtensions.CorsPolicyName);
