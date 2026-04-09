@@ -1,5 +1,6 @@
 using LoyalPay.RewardsService.Domain.Entities;
 using LoyalPay.RewardsService.Infrastructure.Persistence.DbContext;
+using LoyalPay.Shared.Entities;
 using LoyalPay.Shared.Events;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;

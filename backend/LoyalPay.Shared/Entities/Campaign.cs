@@ -1,8 +1,12 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace LoyalPay.AdminService.Domain.Entities;
+namespace LoyalPay.Shared.Entities;
 
+/// <summary>
+/// Bonus-points campaign stored in the Rewards database.
+/// Shared between AdminService (creates campaigns) and RewardsService (reads active campaigns).
+/// </summary>
 [Table("Campaigns")]
 public class Campaign
 {

@@ -1,4 +1,5 @@
 using LoyalPay.AdminService.Domain.Entities;
+using LoyalPay.Shared.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace LoyalPay.AdminService.Infrastructure.Persistence.DbContext;

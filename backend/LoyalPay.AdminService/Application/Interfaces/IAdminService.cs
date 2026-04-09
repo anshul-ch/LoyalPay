@@ -1,6 +1,7 @@
 using LoyalPay.AdminService.Application.DTOs;
 using LoyalPay.AdminService.Domain.Entities;
 using LoyalPay.Shared.Common;
+using LoyalPay.Shared.Entities;
 
 namespace LoyalPay.AdminService.Application.Interfaces;
 

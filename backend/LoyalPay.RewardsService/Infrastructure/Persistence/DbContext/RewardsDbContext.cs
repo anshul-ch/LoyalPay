@@ -1,4 +1,5 @@
 using LoyalPay.RewardsService.Domain.Entities;
+using LoyalPay.Shared.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace LoyalPay.RewardsService.Infrastructure.Persistence.DbContext;

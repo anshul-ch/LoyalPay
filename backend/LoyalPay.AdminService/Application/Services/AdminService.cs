@@ -3,6 +3,7 @@ using LoyalPay.AdminService.Application.Interfaces;
 using LoyalPay.AdminService.Domain.Entities;
 using LoyalPay.AdminService.Infrastructure.Persistence.DbContext;
 using LoyalPay.Shared.Common;
+using LoyalPay.Shared.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace LoyalPay.AdminService.Application.Services;
