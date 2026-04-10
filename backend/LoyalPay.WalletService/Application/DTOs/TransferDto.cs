@@ -13,4 +13,10 @@ public class TransferDto
 
     [MaxLength(200, ErrorMessage = "Note cannot be longer than 200 characters.")]
     public string? Note { get; set; }
+
+    [MaxLength(120, ErrorMessage = "Receiver name cannot exceed 120 characters.")]
+    public string? ReceiverName { get; set; }
+
+    [MaxLength(120, ErrorMessage = "Sender name cannot exceed 120 characters.")]
+    public string? SenderName { get; set; }
 }

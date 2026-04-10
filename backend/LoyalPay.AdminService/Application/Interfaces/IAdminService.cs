@@ -9,6 +9,7 @@ public interface IAdminService
 {
     Task<ApiResponse<object>> GetDashboardAsync();
     Task<ApiResponse<List<object>>> GetUsersAsync();
+    Task<ApiResponse<string>> UpdateUserStatusAsync(Guid userId, bool isActive, Guid adminUserId);
 
     /// <summary>
     /// Returns all users with Pending KYC status, including their latest submission metadata.

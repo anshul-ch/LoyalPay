@@ -24,7 +24,8 @@ public class AdminService : IAdminService
     public async Task<ApiResponse<object>> GetDashboardAsync()
     {
         var totalUsers  = await _authDb.Users.CountAsync(u => u.Role == "User");
-        var pendingKyc  = await _authDb.Users.CountAsync(u => u.KycStatus == "Pending");
+        var pendingKyc  = await _authDb.KycSubmissions.CountAsync(k => k.Status == "Pending");
+        var totalWalletsBalance = await _walletDb.WalletAccounts.SumAsync(w => (decimal?)w.Balance) ?? 0m;
         var silver      = await _rewardsDb.RewardAccounts.CountAsync(r => r.Tier == "Silver");
         var gold        = await _rewardsDb.RewardAccounts.CountAsync(r => r.Tier == "Gold");
         var platinum    = await _rewardsDb.RewardAccounts.CountAsync(r => r.Tier == "Platinum");
@@ -32,6 +33,7 @@ public class AdminService : IAdminService
         var data = new
         {
             TotalUsers      = totalUsers,
+            TotalWalletsBalance = totalWalletsBalance,
             PendingKycCount = pendingKyc,
             SilverCount     = silver,
             GoldCount       = gold,
@@ -54,14 +56,49 @@ public class AdminService : IAdminService
             u.UserId,
             u.FullName,
             u.Email,
+            u.Phone,
+            u.Role,
             u.KycStatus,
             u.IsActive,
+            u.KycDocumentType,
+            u.KycDocumentNumber,
+            u.KycRejectionNote,
+            u.KycReviewedAt,
+            u.CreatedAt,
             Balance = wallets.FirstOrDefault(w => w.UserId == u.UserId)?.Balance ?? 0,
             Points  = rewards.FirstOrDefault(r => r.UserId == u.UserId)?.TotalPoints ?? 0,
             Tier    = rewards.FirstOrDefault(r => r.UserId == u.UserId)?.Tier ?? "Silver"
         }).ToList();
 
         return ApiResponse<List<object>>.Ok(result);
+    }
+
+    public async Task<ApiResponse<string>> UpdateUserStatusAsync(Guid userId, bool isActive, Guid adminUserId)
+    {
+        var user = await _authDb.Users.FirstOrDefaultAsync(u => u.UserId == userId && u.Role == "User");
+        if (user == null)
+        {
+            return ApiResponse<string>.Fail("User not found.");
+        }
+
+        if (user.IsActive == isActive)
+        {
+            return ApiResponse<string>.Ok($"User is already {(isActive ? "active" : "inactive")}.");
+        }
+
+        user.IsActive = isActive;
+        await _authDb.SaveChangesAsync();
+
+        var log = new AuditLog
+        {
+            AdminUserId = adminUserId,
+            Action = isActive ? "USER_ACTIVATED" : "USER_DEACTIVATED",
+            Notes = $"UserId: {userId}"
+        };
+        _rewardsDb.AuditLogs.Add(log);
+        await _rewardsDb.SaveChangesAsync();
+
+        return ApiResponse<string>.Ok($"User {(isActive ? "activated" : "deactivated")} successfully.");
     }
 
     public async Task<ApiResponse<List<object>>> GetPendingKycAsync()

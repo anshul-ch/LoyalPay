@@ -51,6 +51,7 @@ builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<UserRegisteredConsumer>();
     x.AddConsumer<TopUpCompletedConsumer>();
+    x.AddConsumer<TransferCompletedConsumer>();
 
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -68,6 +69,11 @@ builder.Services.AddMassTransit(x =>
         cfg.ReceiveEndpoint("rewards-top-up-completed", e =>
         {
             e.ConfigureConsumer<TopUpCompletedConsumer>(context);
+        });
+
+        cfg.ReceiveEndpoint("rewards-transfer-completed", e =>
+        {
+            e.ConfigureConsumer<TransferCompletedConsumer>(context);
         });
     });
 });

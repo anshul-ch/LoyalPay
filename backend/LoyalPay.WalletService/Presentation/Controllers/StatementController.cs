@@ -19,13 +19,10 @@ public class StatementController : ControllerBase
 
     private Guid GetUserId()
     {
-        var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userIdValue))
-        {
-            return Guid.Empty;
-        }
+        var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub");
 
-        return Guid.Parse(userIdValue);
+        return Guid.TryParse(userIdValue, out var userId) ? userId : Guid.Empty;
     }
 
     [HttpGet("pdf")]

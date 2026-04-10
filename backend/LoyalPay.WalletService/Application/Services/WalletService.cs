@@ -211,6 +211,11 @@ public class WalletService : IWalletService
         transferRequest.CreatedAt = DateTime.UtcNow;
 
         senderWallet.Balance = senderWallet.Balance - dto.Amount;
+        if (senderWallet.Balance < 0)
+        {
+            return ApiResponse<string>.Fail("Insufficient balance.");
+        }
+
         senderWallet.UpdatedAt = DateTime.UtcNow;
 
         receiverWallet.Balance = receiverWallet.Balance + dto.Amount;
@@ -221,7 +226,10 @@ public class WalletService : IWalletService
         senderEntry.EntryType = "Debit";
         senderEntry.Amount = -dto.Amount;
         senderEntry.BalanceAfter = senderWallet.Balance;
-        senderEntry.Description = "Transfer to user " + dto.ReceiverUserId;
+        var receiverLabel = string.IsNullOrWhiteSpace(dto.ReceiverName)
+            ? dto.ReceiverUserId.ToString()
+            : dto.ReceiverName.Trim();
+        senderEntry.Description = "Transfer to " + receiverLabel;
         senderEntry.CreatedAt = DateTime.UtcNow;
 
         var receiverEntry = new LedgerEntry();
@@ -229,7 +237,10 @@ public class WalletService : IWalletService
         receiverEntry.EntryType = "Credit";
         receiverEntry.Amount = dto.Amount;
         receiverEntry.BalanceAfter = receiverWallet.Balance;
-        receiverEntry.Description = "Transfer from user " + senderUserId;
+        var senderLabel = string.IsNullOrWhiteSpace(dto.SenderName)
+            ? senderUserId.ToString()
+            : dto.SenderName.Trim();
+        receiverEntry.Description = "Transfer from " + senderLabel;
         receiverEntry.CreatedAt = DateTime.UtcNow;
 
         await _transferRepository.AddTransferRequestAsync(transferRequest);
@@ -238,6 +249,13 @@ public class WalletService : IWalletService
         await _ledgerRepository.AddLedgerEntryAsync(senderEntry);
         await _ledgerRepository.AddLedgerEntryAsync(receiverEntry);
         await _transferRepository.SaveChangesAsync();
+
+        await _publishEndpoint.Publish(new TransferCompletedEvent(
+            transferRequest.TransferId,
+            senderUserId,
+            dto.ReceiverUserId,
+            dto.Amount
+        ));
 
         return ApiResponse<string>.Ok("Transfer completed successfully.");
     }

@@ -3,6 +3,10 @@ using LoyalPay.RewardsService.Application.Interfaces;
 using LoyalPay.RewardsService.Domain.Entities;
 using LoyalPay.RewardsService.Domain.Interfaces;
 using LoyalPay.Shared.Common;
+using LoyalPay.Shared.Events;
+using MassTransit;
+using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace LoyalPay.RewardsService.Application.Services;
 
@@ -12,14 +16,34 @@ public class RewardsService : IRewardsService
     private readonly ICatalogItemRepository _catalogRepository;
     private readonly IRedemptionRepository _redemptionRepository;
     private readonly IRewardTransactionRepository _rewardTransactionRepository;
+    private readonly IPublishEndpoint _publishEndpoint;
 
     public RewardsService(IRewardAccountRepository rewardAccountRepository, ICatalogItemRepository catalogRepository,
-        IRedemptionRepository redemptionRepository, IRewardTransactionRepository rewardTransactionRepository)
+        IRedemptionRepository redemptionRepository, IRewardTransactionRepository rewardTransactionRepository,
+        IPublishEndpoint publishEndpoint)
     {
         _rewardAccountRepository = rewardAccountRepository;
         _catalogRepository = catalogRepository;
         _redemptionRepository = redemptionRepository;
         _rewardTransactionRepository = rewardTransactionRepository;
+        _publishEndpoint = publishEndpoint;
+    }
+
+    private static decimal ParseCashbackAmount(CatalogItem item)
+    {
+        var source = $"{item.Name} {item.Description}";
+        var match = Regex.Match(source, @"\d+(?:\.\d{1,2})?");
+        if (!match.Success)
+        {
+            return 0m;
+        }
+
+        if (!decimal.TryParse(match.Value, NumberStyles.Number, CultureInfo.InvariantCulture, out var amount))
+        {
+            return 0m;
+        }
+
+        return Math.Max(0m, amount);
     }
 
     private string GetTier(int points)
@@ -145,6 +169,20 @@ public class RewardsService : IRewardsService
         await _redemptionRepository.AddRedemptionAsync(redemption);
         await _rewardTransactionRepository.AddRewardTransactionAsync(transaction);
         await _rewardAccountRepository.SaveChangesAsync();
+
+        if (string.Equals(item.ItemType, "Cashback", StringComparison.OrdinalIgnoreCase))
+        {
+            var cashbackAmount = ParseCashbackAmount(item);
+            if (cashbackAmount > 0)
+            {
+                await _publishEndpoint.Publish(new CashbackRedeemedEvent(
+                    userId,
+                    item.ItemId,
+                    item.Name,
+                    cashbackAmount
+                ));
+            }
+        }
 
         return ApiResponse<string>.Ok("Redemption successful! Your request is being processed.");
     }

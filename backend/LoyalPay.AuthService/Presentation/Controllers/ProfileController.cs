@@ -21,8 +21,10 @@ public class ProfileController : ControllerBase
 
     private Guid GetUserId()
     {
-        var value = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        return string.IsNullOrWhiteSpace(value) ? Guid.Empty : Guid.Parse(value);
+        var value = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub");
+
+        return Guid.TryParse(value, out var userId) ? userId : Guid.Empty;
     }
 
     [HttpGet]

@@ -51,6 +51,7 @@ builder.Services.AddScoped<IStatementService, StatementService>();
 builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<UserRegisteredConsumer>();
+    x.AddConsumer<CashbackRedeemedConsumer>();
 
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -63,6 +64,11 @@ builder.Services.AddMassTransit(x =>
         cfg.ReceiveEndpoint("wallet-user-registered", e =>
         {
             e.ConfigureConsumer<UserRegisteredConsumer>(context);
+        });
+
+        cfg.ReceiveEndpoint("wallet-cashback-redeemed", e =>
+        {
+            e.ConfigureConsumer<CashbackRedeemedConsumer>(context);
         });
     });
 });

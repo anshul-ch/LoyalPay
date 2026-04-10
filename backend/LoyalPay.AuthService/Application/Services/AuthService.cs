@@ -30,6 +30,23 @@ public class AuthService : IAuthService
         _publishEndpoint = publishEndpoint;
     }
 
+    private static string NormalizeKycStatus(string? status)
+    {
+        if (string.IsNullOrWhiteSpace(status))
+        {
+            return "NotSubmitted";
+        }
+
+        return status switch
+        {
+            "not_submitted" => "NotSubmitted",
+            "pending" => "Pending",
+            "approved" => "Approved",
+            "rejected" => "Rejected",
+            _ => status
+        };
+    }
+
     /// <summary>
     /// Creates a fresh access + refresh token pair and persists the refresh token.
     /// Called after every successful login, signup, or token refresh.
@@ -78,8 +95,7 @@ public class AuthService : IAuthService
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
             Role = "User",
             IsActive = true,
-            // KYC starts as not_submitted — user hasn't uploaded anything yet.
-            KycStatus = "not_submitted"
+            KycStatus = "NotSubmitted"
         };
 
         await _userRepository.AddUserAsync(user);
@@ -131,6 +147,11 @@ public class AuthService : IAuthService
         if (storedToken == null || storedToken.IsRevoked)
         {
             return ApiResponse<TokenDto>.Fail("Session expired. Please log in again.");
+        }
+
+        if (!storedToken.User.IsActive)
+        {
+            return ApiResponse<TokenDto>.Fail("This account has been deactivated.");
         }
 
         if (storedToken.ExpiresAt < DateTime.UtcNow)
@@ -200,7 +221,7 @@ public class AuthService : IAuthService
             user.Email,
             user.Phone,
             user.Role,
-            user.KycStatus,
+            KycStatus = NormalizeKycStatus(user.KycStatus),
             user.KycDocumentType,
             user.IsActive,
             user.CreatedAt
@@ -229,7 +250,7 @@ public class AuthService : IAuthService
             user.Email,
             user.Phone,
             user.Role,
-            user.KycStatus
+            KycStatus = NormalizeKycStatus(user.KycStatus)
         };
 
         return ApiResponse<object>.Ok(data);
@@ -276,20 +297,50 @@ public class AuthService : IAuthService
             return ApiResponse<string>.Fail("KYC is already approved.");
         }
 
+        // Accept both raw base64 and data URLs (data:<mime>;base64,<payload>).
+        var contentType = "application/octet-stream";
+        var base64Payload = dto.FileBase64;
+
+        if (dto.FileBase64.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+        {
+            var commaIndex = dto.FileBase64.IndexOf(',');
+            if (commaIndex < 0)
+            {
+                return ApiResponse<string>.Fail("Invalid file data. Please provide a valid base64-encoded file.");
+            }
+
+            var metadata = dto.FileBase64[5..commaIndex];
+            var semicolonIndex = metadata.IndexOf(';');
+            if (semicolonIndex > 0)
+            {
+                contentType = metadata[..semicolonIndex];
+            }
+
+            base64Payload = dto.FileBase64[(commaIndex + 1)..];
+        }
+
         // Decode the base64 document and store it directly in the database.
         byte[] fileBytes;
         try
         {
-            fileBytes = Convert.FromBase64String(dto.FileBase64);
+            fileBytes = Convert.FromBase64String(base64Payload);
         }
         catch
         {
             return ApiResponse<string>.Fail("Invalid file data. Please provide a valid base64-encoded file.");
         }
 
+        var extension = contentType switch
+        {
+            "image/png" => ".png",
+            "image/webp" => ".webp",
+            "application/pdf" => ".pdf",
+            _ => ".jpg"
+        };
+
         // Derive a safe filename from the document type and a timestamp.
         var safeDocType = dto.DocumentType.Replace(" ", "_");
-        var fileName = $"{userId}_{safeDocType}_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}.jpg";
+        var fileName = $"{userId}_{safeDocType}_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}{extension}";
 
         var submission = new KycSubmission
         {
@@ -298,7 +349,7 @@ public class AuthService : IAuthService
             DocumentNumber = dto.DocumentNumber,
             FileData = fileBytes,
             FileName = fileName,
-            ContentType = "image/jpeg",
+            ContentType = contentType,
             Status = "Pending"
         };
 
@@ -320,7 +371,10 @@ public class AuthService : IAuthService
         var submission = await _kycSubmissionRepository.GetLatestByUserIdAsync(userId);
         if (submission == null)
         {
-            return ApiResponse<object>.Fail("No KYC submission found.");
+            return ApiResponse<object>.Ok(new
+            {
+                Status = "NotSubmitted"
+            });
         }
 
         var data = new
@@ -341,7 +395,7 @@ public class AuthService : IAuthService
     public async Task<(byte[] Data, string ContentType, string FileName)?> GetKycDocumentAsync(Guid userId)
     {
         var submission = await _kycSubmissionRepository.GetLatestByUserIdAsync(userId);
-        if (submission == null || submission.FileData.Length == 0)
+        if (submission == null || submission.FileData == null || submission.FileData.Length == 0)
         {
             return null;
         }
@@ -357,6 +411,11 @@ public class AuthService : IAuthService
             return ApiResponse<object>.Fail("No active user found with that email.");
         }
 
-        return ApiResponse<object>.Ok(new { user.UserId });
+        return ApiResponse<object>.Ok(new
+        {
+            user.UserId,
+            user.FullName,
+            user.Email
+        });
     }
 }

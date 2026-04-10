@@ -25,6 +25,7 @@ public class KycSubmissionRepository : IKycSubmissionRepository
         return await _db.KycSubmissions
             .Where(k => k.UserId == userId)
             .OrderByDescending(k => k.SubmittedAt)
+            .ThenByDescending(k => k.SubmissionId)
             .FirstOrDefaultAsync();
     }
 
@@ -33,6 +34,7 @@ public class KycSubmissionRepository : IKycSubmissionRepository
         return await _db.KycSubmissions
             .Where(k => k.UserId == userId)
             .OrderByDescending(k => k.SubmittedAt)
+            .ThenByDescending(k => k.SubmissionId)
             .ToListAsync();
     }
 
@@ -40,6 +42,8 @@ public class KycSubmissionRepository : IKycSubmissionRepository
     {
         return await _db.KycSubmissions
             .Where(k => k.Status == "Pending")
+            .OrderByDescending(k => k.SubmittedAt)
+            .ThenByDescending(k => k.SubmissionId)
             .ToListAsync();
     }
 
