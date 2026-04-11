@@ -9,9 +9,7 @@ export class ToastService {
 
   private add(type: Toast['type'], message: string): void {
     const id = Math.random().toString(36).slice(2);
-    const toast: Toast = { id, type, message };
-    this.toastsSubject.next([...this.toastsSubject.value, toast]);
-    setTimeout(() => this.remove(id), 4000);
+    this.toastsSubject.next([...this.toastsSubject.value, { id, type, message }]);
   }
 
   remove(id: string): void {
@@ -19,6 +17,6 @@ export class ToastService {
   }
 
   success(message: string): void { this.add('success', message); }
-  error(message: string): void { this.add('error', message); }
-  info(message: string): void { this.add('info', message); }
+  error(message: string): void   { this.add('error', message); }
+  info(message: string): void    { this.add('info', message); }
 }

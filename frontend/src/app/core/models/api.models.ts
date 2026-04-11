@@ -7,6 +7,7 @@ export interface TokenDto {
   phone: string;
   role: 'User' | 'Admin';
   userId: string;
+  requiresPasswordChange: boolean;
 }
 
 export interface SignupDto {
@@ -168,9 +169,19 @@ export interface UserView {
   tier?: string;
 }
 
+export interface PagedUsersResult {
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  items: UserView[];
+}
+
 export interface KycSubmissionView {
   submissionId: string;
   userId: string;
+  fullName: string;
+  email: string;
   documentType: string;
   documentNumber: string;
   fileName: string;

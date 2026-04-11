@@ -32,8 +32,7 @@ namespace LoyalPay.AuthService.Infrastructure.Persistence.Migrations
                     b.Property<string>("ContentType")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
-                        .HasDefaultValue("image/jpeg");
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("DocumentNumber")
                         .IsRequired()
@@ -159,6 +158,9 @@ namespace LoyalPay.AuthService.Infrastructure.Persistence.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<bool>("MustChangePassword")
+                        .HasColumnType("bit");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -176,6 +178,9 @@ namespace LoyalPay.AuthService.Infrastructure.Persistence.Migrations
                     b.HasKey("UserId");
 
                     b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex("Phone")
                         .IsUnique();
 
                     b.ToTable("Users");

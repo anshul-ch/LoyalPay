@@ -43,34 +43,81 @@ public class AdminService : IAdminService
         return ApiResponse<object>.Ok(data);
     }
 
-    public async Task<ApiResponse<List<object>>> GetUsersAsync()
+    public async Task<ApiResponse<object>> GetUsersPagedAsync(int page, int pageSize, string? search, string? kycStatus, string? tier, string? status)
     {
-        // NOTE: Loads all users, wallets, and rewards into memory and joins in-process.
-        // Fine for small datasets; add server-side pagination if user count grows large.
-        var users   = await _authDb.Users.Where(u => u.Role == "User").ToListAsync();
-        var wallets = await _walletDb.WalletAccounts.ToListAsync();
-        var rewards = await _rewardsDb.RewardAccounts.ToListAsync();
+        // Build the base query sorted by name
+        var query = _authDb.Users.Where(u => u.Role == "User").AsQueryable();
 
-        var result = users.Select(u => (object)new
+        if (!string.IsNullOrWhiteSpace(search))
         {
-            u.UserId,
-            u.FullName,
-            u.Email,
-            u.Phone,
-            u.Role,
-            u.KycStatus,
-            u.IsActive,
-            u.KycDocumentType,
-            u.KycDocumentNumber,
-            u.KycRejectionNote,
-            u.KycReviewedAt,
-            u.CreatedAt,
-            Balance = wallets.FirstOrDefault(w => w.UserId == u.UserId)?.Balance ?? 0,
-            Points  = rewards.FirstOrDefault(r => r.UserId == u.UserId)?.TotalPoints ?? 0,
-            Tier    = rewards.FirstOrDefault(r => r.UserId == u.UserId)?.Tier ?? "Silver"
-        }).ToList();
+            var q = search.ToLower();
+            query = query.Where(u => u.FullName.ToLower().Contains(q) || u.Email.ToLower().Contains(q));
+        }
 
-        return ApiResponse<List<object>>.Ok(result);
+        if (!string.IsNullOrWhiteSpace(kycStatus))
+            query = query.Where(u => u.KycStatus == kycStatus);
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            var isActive = status == "active";
+            query = query.Where(u => u.IsActive == isActive);
+        }
+
+        var totalCount = await query.CountAsync();
+
+        var users = await query
+            .OrderBy(u => u.FullName)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        var userIds = users.Select(u => u.UserId).ToList();
+
+        // Only load rewards for the current page
+        var rewards = await _rewardsDb.RewardAccounts
+            .Where(r => userIds.Contains(r.UserId))
+            .ToListAsync();
+
+        // Apply tier filter after join (tier lives in rewards DB)
+        var items = users.Select(u =>
+        {
+            var reward = rewards.FirstOrDefault(r => r.UserId == u.UserId);
+            return new
+            {
+                u.UserId,
+                u.FullName,
+                u.Email,
+                u.Phone,
+                u.Role,
+                u.KycStatus,
+                u.IsActive,
+                u.KycDocumentType,
+                u.KycDocumentNumber,
+                u.KycRejectionNote,
+                u.KycReviewedAt,
+                u.CreatedAt,
+                Tier = reward?.Tier ?? "Silver"
+            };
+        }).AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(tier))
+            items = items.Where(u => u.Tier == tier);
+
+        var itemList = items.ToList();
+
+        // Recalculate total when tier filter is applied (approximate — tier is cross-DB)
+        var finalTotal = string.IsNullOrWhiteSpace(tier) ? totalCount : itemList.Count;
+
+        var result = new
+        {
+            TotalCount = finalTotal,
+            Page = page,
+            PageSize = pageSize,
+            TotalPages = (int)Math.Ceiling(finalTotal / (double)pageSize),
+            Items = itemList.Cast<object>().ToList()
+        };
+
+        return ApiResponse<object>.Ok(result);
     }
 
     public async Task<ApiResponse<string>> UpdateUserStatusAsync(Guid userId, bool isActive, Guid adminUserId)

@@ -138,7 +138,6 @@ export class TopUpComponent implements OnInit {
         if (!res.success || !res.data?.topUpId) {
           this.loading = false;
           this.topUpWarning = res.message || 'Top-up could not be started.';
-          this.toast.error(this.topUpWarning);
           return;
         }
 
@@ -148,7 +147,6 @@ export class TopUpComponent implements OnInit {
             this.loading = false;
             if (!finishRes.success) {
               this.topUpWarning = finishRes.message || 'Top-up failed to complete.';
-              this.toast.error(this.topUpWarning);
               return;
             }
 
@@ -159,14 +157,12 @@ export class TopUpComponent implements OnInit {
           error: () => {
             this.loading = false;
             this.topUpWarning = 'Top-up verification failed.';
-            this.toast.error(this.topUpWarning);
           }
         });
       },
       error: () => {
         this.loading = false;
         this.topUpWarning = 'Unable to start payment request.';
-        this.toast.error(this.topUpWarning);
       }
     });
   }

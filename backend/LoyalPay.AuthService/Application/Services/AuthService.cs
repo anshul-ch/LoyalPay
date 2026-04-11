@@ -75,7 +75,8 @@ public class AuthService : IAuthService
             FullName = user.FullName,
             Phone = user.Phone,
             Role = user.Role,
-            UserId = user.UserId
+            UserId = user.UserId,
+            RequiresPasswordChange = user.MustChangePassword
         };
     }
 
@@ -85,6 +86,12 @@ public class AuthService : IAuthService
         if (alreadyExists)
         {
             return ApiResponse<TokenDto>.Fail("This email is already registered.");
+        }
+
+        var phoneExists = await _userRepository.PhoneExistsAsync(dto.Phone);
+        if (phoneExists)
+        {
+            return ApiResponse<TokenDto>.Fail("This phone number is already registered.");
         }
 
         var user = new User
@@ -102,7 +109,7 @@ public class AuthService : IAuthService
         await _userRepository.SaveChangesAsync();
 
         // Notify WalletService and RewardsService to create accounts for this user.
-        await _publishEndpoint.Publish(new UserRegisteredEvent(user.UserId));
+        await _publishEndpoint.Publish(new UserRegisteredEvent(user.UserId, user.Email, user.FullName));
 
         var tokens = await IssueTokensAsync(user);
         return ApiResponse<TokenDto>.Ok(tokens, "Account created successfully!");
@@ -137,6 +144,7 @@ public class AuthService : IAuthService
         await _refreshTokenRepository.SaveChangesAsync();
 
         var tokens = await IssueTokensAsync(user);
+        await _publishEndpoint.Publish(new UserLoggedInEvent(user.UserId, user.Email, user.FullName, DateTime.UtcNow));
         return ApiResponse<TokenDto>.Ok(tokens);
     }
 
@@ -191,6 +199,7 @@ public class AuthService : IAuthService
 
         var tempPassword = Convert.ToBase64String(Guid.NewGuid().ToByteArray())[..12];
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(tempPassword);
+        user.MustChangePassword = true;
 
         // Invalidate all active sessions so the old password can't be reused.
         var activeTokens = await _refreshTokenRepository.GetActiveTokensByUserIdAsync(user.UserId);
@@ -201,6 +210,13 @@ public class AuthService : IAuthService
 
         await _userRepository.SaveChangesAsync();
         await _refreshTokenRepository.SaveChangesAsync();
+
+        await _publishEndpoint.Publish(new ForgotPasswordIssuedEvent(
+            user.UserId,
+            user.Email,
+            user.FullName,
+            tempPassword,
+            DateTime.UtcNow));
 
         // TODO: In production, send tempPassword via email and return only safeMessage.
         return ApiResponse<string>.Ok($"Temporary password: {tempPassword}", safeMessage);
@@ -270,6 +286,7 @@ public class AuthService : IAuthService
         }
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+        user.MustChangePassword = false;
 
         // Revoke all sessions so the user must log in again with the new password.
         var activeTokens = await _refreshTokenRepository.GetActiveTokensByUserIdAsync(userId);
@@ -280,6 +297,13 @@ public class AuthService : IAuthService
 
         await _userRepository.SaveChangesAsync();
         await _refreshTokenRepository.SaveChangesAsync();
+
+        await _publishEndpoint.Publish(new UserNotificationRequestedEvent(
+            userId,
+            "Security",
+            "Password changed",
+            "Your account password was changed successfully. If this was not you, contact support immediately.",
+            DateTime.UtcNow));
 
         return ApiResponse<string>.Ok("Password changed successfully.");
     }

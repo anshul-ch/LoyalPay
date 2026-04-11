@@ -81,7 +81,7 @@ import { TokenDto } from '../../core/models/api.models';
       </aside>
 
       <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header class="bg-white border-b border-gray-100 px-4 lg:px-6 py-3.5 flex items-center gap-4 shadow-sm sticky top-0 z-10">
+        <header class="bg-white border-b border-gray-100 px-4 lg:px-6 py-3.5 flex items-center gap-4 shadow-sm sticky top-0 z-[100]">
           <button (click)="sidebarOpen = !sidebarOpen"
             class="lg:hidden p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -93,67 +93,100 @@ import { TokenDto } from '../../core/models/api.models';
           <!-- Admin dropdown -->
           <div class="relative z-50">
             @if (dropdownOpen) {
-              <div class="fixed inset-0 z-40" (click)="dropdownOpen = false"></div>
+              <div class="fixed inset-0 z-[900]" (click)="dropdownOpen = false"></div>
             }
             <button type="button" (click)="toggleDropdown($event)"
-              class="relative z-50 flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-gray-100 transition select-none">
-              <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-brand-navy to-blue-600 flex items-center justify-center flex-shrink-0 ring-2 ring-brand-navy ring-offset-1">
-                <span class="text-white font-bold text-xs">{{ initials }}</span>
+              class="relative z-[1001] flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-gray-100 transition select-none">
+              <!-- Avatar circle with initials -->
+              <div class="w-8 h-8 rounded-full bg-gradient-to-br from-brand-navy to-brand-navy-dark flex items-center justify-center flex-shrink-0 shadow-sm ring-2 ring-brand-navy/20">
+                <span class="text-white text-xs font-bold leading-none">{{ initials }}</span>
               </div>
-              <div class="hidden md:block text-left">
-                <p class="text-sm font-semibold text-gray-800 leading-tight">{{ user?.fullName }}</p>
+              <div class="hidden sm:flex flex-col items-start min-w-0">
+                <span class="text-brand-navy text-sm font-semibold leading-tight truncate max-w-[140px]">{{ displayName }}</span>
+                <span class="text-gray-400 text-[10px] leading-tight">Admin</span>
               </div>
-              <svg class="w-4 h-4 text-gray-400 transition-transform duration-200"
+              <svg class="w-3.5 h-3.5 text-gray-400 transition-transform duration-200 flex-shrink-0"
                 [style.transform]="dropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)'"
                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
               </svg>
             </button>
 
             @if (dropdownOpen) {
-              <div class="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden"
-                style="z-index: 60;">
-                <div class="px-4 py-3 bg-gray-50 border-b border-gray-100">
-                  <p class="text-sm font-semibold text-gray-900 truncate">{{ user?.fullName }}</p>
-                  <p class="text-xs text-gray-400">Administrator</p>
+              <div class="fixed right-4 top-[60px] sm:right-6 w-72 bg-white rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.12)] border border-gray-100/80 overflow-hidden"
+                style="z-index: 9999;">
+
+                <!-- Header with gradient -->
+                <div class="relative px-4 pt-4 pb-3 bg-gradient-to-br from-brand-navy-dark to-[#001020] overflow-hidden">
+                  <div class="absolute -top-4 -right-4 w-24 h-24 bg-brand-orange/15 rounded-full blur-xl"></div>
+                  <div class="absolute -bottom-6 -left-4 w-20 h-20 bg-white/5 rounded-full blur-lg"></div>
+                  <div class="relative flex items-center gap-3">
+                    <div class="w-11 h-11 rounded-full bg-gradient-to-br from-brand-navy to-brand-navy-dark flex items-center justify-center flex-shrink-0 shadow-md ring-2 ring-white/20">
+                      <span class="text-white text-sm font-bold">{{ initials }}</span>
+                    </div>
+                    <div class="min-w-0">
+                      <p class="text-white text-sm font-semibold truncate">{{ user?.fullName || displayName }}</p>
+                      <p class="text-white/60 text-xs truncate">{{ user?.email }}</p>
+                    </div>
+                  </div>
+                  <div class="relative mt-2.5">
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-orange/20 border border-brand-orange/30 text-brand-orange text-[10px] font-bold uppercase tracking-wide">
+                      Administrator
+                    </span>
+                  </div>
                 </div>
-                <div class="py-1">
+
+                <!-- Menu items -->
+                <div class="py-1.5 px-1.5">
                   <a routerLink="/admin/dashboard" (click)="dropdownOpen = false"
-                    class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition">
-                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                    </svg>
-                    Dashboard
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-brand-navy/5 hover:text-brand-navy transition-all group/item">
+                    <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0 group-hover/item:bg-blue-100 transition-colors">
+                      <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                      </svg>
+                    </div>
+                    <span class="font-medium">Dashboard</span>
                   </a>
                   <a routerLink="/admin/users" (click)="dropdownOpen = false"
-                    class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition">
-                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
-                    </svg>
-                    Manage Users
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-brand-navy/5 hover:text-brand-navy transition-all group/item">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0 group-hover/item:bg-emerald-100 transition-colors">
+                      <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                      </svg>
+                    </div>
+                    <span class="font-medium">Manage Users</span>
                   </a>
                   <a routerLink="/admin/kyc" (click)="dropdownOpen = false"
-                    class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition">
-                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-                    </svg>
-                    KYC Review
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-brand-navy/5 hover:text-brand-navy transition-all group/item">
+                    <div class="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0 group-hover/item:bg-purple-100 transition-colors">
+                      <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                      </svg>
+                    </div>
+                    <span class="font-medium">KYC Review</span>
                   </a>
                   <a routerLink="/admin/campaigns" (click)="dropdownOpen = false"
-                    class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition">
-                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/>
-                    </svg>
-                    Campaigns
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-brand-navy/5 hover:text-brand-navy transition-all group/item">
+                    <div class="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0 group-hover/item:bg-amber-100 transition-colors">
+                      <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/>
+                      </svg>
+                    </div>
+                    <span class="font-medium">Campaigns</span>
                   </a>
                 </div>
-                <div class="border-t border-gray-100 py-1">
+
+                <div class="mx-3 border-t border-gray-100"></div>
+
+                <div class="py-1.5 px-1.5">
                   <button type="button" (click)="logout()"
-                    class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-brand-red hover:bg-red-50 transition">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-                    </svg>
-                    Sign out
+                    class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-brand-red hover:bg-red-50 transition-all group/item">
+                    <div class="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0 group-hover/item:bg-red-100 transition-colors">
+                      <svg class="w-4 h-4 text-brand-red" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                      </svg>
+                    </div>
+                    <span class="font-medium">Sign out</span>
                   </button>
                 </div>
               </div>
@@ -179,8 +212,22 @@ export class AdminShellComponent implements OnInit {
     return window.innerWidth < 1024;
   }
 
+  get displayName(): string {
+    const name = this.user?.fullName?.trim();
+    if (!name) return this.user?.email?.split('@')[0] || 'Account';
+    const parts = name.split(' ').filter(p => p.length > 0);
+    const firstName = parts[0];
+    const lastName = parts.length > 1 ? parts[parts.length - 1] : '';
+    const full = lastName ? `${firstName} ${lastName}` : firstName;
+    return full.length <= 18 ? full : this.initials;
+  }
+
   get initials(): string {
-    return (this.user?.fullName ?? 'A').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    const name = this.user?.fullName?.trim();
+    if (!name) return (this.user?.email?.[0] ?? 'A').toUpperCase();
+    const parts = name.split(' ').filter(p => p.length > 0);
+    if (parts.length === 1) return parts[0][0].toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   }
 
   constructor(private auth: AuthService, private router: Router) {}

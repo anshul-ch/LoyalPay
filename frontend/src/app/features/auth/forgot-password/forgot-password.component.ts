@@ -1,8 +1,9 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { RouterLink, Router } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
+import { ToastService } from '../../../core/services/toast.service';
 
 @Component({
   selector: 'app-forgot-password',
@@ -22,7 +23,7 @@ import { AuthService } from '../../../core/services/auth.service';
         @if (!sent) {
           <div class="mb-6">
             <h1 class="text-2xl font-bold text-gray-900">Reset your password</h1>
-            <p class="text-gray-500 text-sm mt-1">Enter your email and we'll send you reset instructions</p>
+             <p class="text-gray-500 text-sm mt-1">Enter your email and we'll generate a temporary password</p>
           </div>
 
           <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-5">
@@ -44,7 +45,7 @@ import { AuthService } from '../../../core/services/auth.service';
                 </svg>
                 Sending...
               } @else {
-                Send reset link
+                Generate temporary password
               }
             </button>
           </form>
@@ -55,12 +56,12 @@ import { AuthService } from '../../../core/services/auth.service';
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
               </svg>
             </div>
-            <h2 class="text-xl font-bold text-gray-900">Check your email</h2>
+            <h2 class="text-xl font-bold text-gray-900">Temporary password generated</h2>
             <p class="text-gray-500 text-sm mt-2">
-              We've sent password reset instructions to<br/>
+              Use the temporary password sent to<br/>
               <span class="font-medium text-gray-700">{{ form.value.email }}</span>
             </p>
-            <p class="text-xs text-gray-400 mt-3">Didn't receive it? Check your spam folder.</p>
+            <p class="text-xs text-gray-400 mt-3">After login, you must change your password.</p>
           </div>
         }
 
@@ -81,13 +82,26 @@ export class ForgotPasswordComponent {
   sent = false;
   form = this.fb.group({ email: ['', [Validators.required, Validators.email]] });
 
-  constructor(private fb: FormBuilder, private auth: AuthService) {}
+  constructor(private fb: FormBuilder, private auth: AuthService, private toast: ToastService, private router: Router) {}
 
   submit(): void {
     if (this.form.invalid) return;
     this.loading = true;
     this.auth.forgotPassword(this.form.value as any).subscribe({
-      next: () => { this.loading = false; this.sent = true; },
+      next: (res) => {
+        this.loading = false;
+        if (!res.success) {
+          this.toast.error(res.message || 'Unable to generate temporary password.');
+          return;
+        }
+
+        this.sent = true;
+        if (res.data) {
+          this.toast.info(`Temporary password: ${res.data.replace('Temporary password: ', '')}`);
+        }
+
+        setTimeout(() => this.router.navigate(['/login']), 1200);
+      },
       error: () => { this.loading = false; }
     });
   }

@@ -93,7 +93,7 @@ import { TokenDto } from '../../core/models/api.models';
 
       <!-- Main content -->
       <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header class="bg-white border-b border-gray-100 px-4 lg:px-6 py-3.5 flex items-center gap-4 shadow-sm sticky top-0 z-10">
+        <header class="bg-white border-b border-gray-100 px-4 lg:px-6 py-3.5 flex items-center gap-4 shadow-sm sticky top-0 z-[100]">
           <button (click)="sidebarOpen = !sidebarOpen"
             class="lg:hidden p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -117,82 +117,103 @@ import { TokenDto } from '../../core/models/api.models';
           <!-- User dropdown -->
           <div class="relative z-50">
             @if (dropdownOpen) {
-              <div class="fixed inset-0 z-40" (click)="dropdownOpen = false"></div>
+              <div class="fixed inset-0 z-[900]" (click)="dropdownOpen = false"></div>
             }
             <button type="button" (click)="toggleDropdown($event)"
-              class="relative z-50 flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-gray-100 transition select-none">
-              <div class="w-8 h-8 rounded-full bg-gradient-to-tr flex items-center justify-center flex-shrink-0 ring-2 ring-offset-1"
-                [class]="avatarBgClass">
-                <span class="text-white font-bold text-xs">{{ initials }}</span>
+              class="relative z-[1001] flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-gray-100 transition select-none group">
+              <!-- Avatar circle with initials -->
+              <div class="w-8 h-8 rounded-full bg-gradient-to-br from-brand-orange to-brand-orange-dark flex items-center justify-center flex-shrink-0 shadow-sm">
+                <span class="text-white text-xs font-bold leading-none">{{ initials }}</span>
               </div>
-              <div class="hidden md:block text-left">
-                <p class="text-sm font-semibold text-gray-800 leading-tight">{{ user?.fullName }}</p>
+              <div class="hidden sm:flex flex-col items-start min-w-0">
+                <span class="text-brand-navy text-sm font-semibold leading-tight truncate max-w-[140px]">{{ displayName }}</span>
+                <span class="text-gray-400 text-[10px] leading-tight">My Account</span>
               </div>
-              <svg class="w-4 h-4 text-gray-400 transition-transform duration-200"
+              <svg class="w-3.5 h-3.5 text-gray-400 transition-transform duration-200 flex-shrink-0"
                 [style.transform]="dropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)'"
                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
               </svg>
             </button>
-            @if (kycStatus && kycStatus !== 'Approved') {
-              <div class="mt-1 text-right">
-                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold uppercase tracking-wide"
-                  [class]="kycBadgeClass">
-                  KYC {{ kycLabel }}
-                </span>
-              </div>
-            }
 
             @if (dropdownOpen) {
-              <div class="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden"
-                style="z-index: 60;">
-                <div class="px-4 py-3 bg-gray-50 border-b border-gray-100 space-y-1.5">
-                  <p class="text-sm font-semibold text-gray-900 truncate">{{ user?.fullName }}</p>
-                  <p class="text-xs text-gray-500 truncate">{{ user?.email }}</p>
+              <div class="fixed right-4 top-[60px] sm:right-6 w-72 bg-white rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.12)] border border-gray-100/80 overflow-hidden"
+                style="z-index: 9999;">
+
+                <!-- Header with gradient -->
+                <div class="relative px-4 pt-4 pb-3 bg-gradient-to-br from-brand-navy to-brand-navy-dark overflow-hidden">
+                  <div class="absolute -top-4 -right-4 w-24 h-24 bg-brand-orange/20 rounded-full blur-xl"></div>
+                  <div class="absolute -bottom-6 -left-4 w-20 h-20 bg-white/5 rounded-full blur-lg"></div>
+                  <div class="relative flex items-center gap-3">
+                    <div class="w-11 h-11 rounded-full bg-gradient-to-br from-brand-orange to-brand-orange-dark flex items-center justify-center flex-shrink-0 shadow-md ring-2 ring-white/20">
+                      <span class="text-white text-sm font-bold">{{ initials }}</span>
+                    </div>
+                    <div class="min-w-0">
+                      <p class="text-white text-sm font-semibold truncate">{{ user?.fullName || displayName }}</p>
+                      <p class="text-white/60 text-xs truncate">{{ user?.email }}</p>
+                    </div>
+                  </div>
                   @if (kycStatus && kycStatus !== 'Approved') {
-                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold uppercase tracking-wide"
-                      [class]="kycBadgeClass">
-                      KYC {{ kycLabel }}
-                    </span>
+                    <div class="relative mt-2.5">
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold uppercase tracking-wide"
+                        [class]="kycBadgeClass">
+                        KYC {{ kycLabel }}
+                      </span>
+                    </div>
                   }
                 </div>
-                <div class="py-1">
+
+                <!-- Menu items -->
+                <div class="py-1.5 px-1.5">
                   <a routerLink="/profile" (click)="dropdownOpen = false"
-                    class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition">
-                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                    </svg>
-                    My Profile
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-brand-orange/5 hover:text-brand-orange transition-all group/item">
+                    <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0 group-hover/item:bg-blue-100 transition-colors">
+                      <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                      </svg>
+                    </div>
+                    <span class="font-medium">My Profile</span>
                   </a>
                   <a routerLink="/wallet" (click)="dropdownOpen = false"
-                    class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition">
-                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
-                    </svg>
-                    Wallet
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-brand-orange/5 hover:text-brand-orange transition-all group/item">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0 group-hover/item:bg-emerald-100 transition-colors">
+                      <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                      </svg>
+                    </div>
+                    <span class="font-medium">Wallet</span>
                   </a>
                   <a routerLink="/rewards" (click)="dropdownOpen = false"
-                    class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition">
-                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
-                    </svg>
-                    Rewards
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-brand-orange/5 hover:text-brand-orange transition-all group/item">
+                    <div class="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0 group-hover/item:bg-amber-100 transition-colors">
+                      <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+                      </svg>
+                    </div>
+                    <span class="font-medium">Rewards</span>
                   </a>
                   <a routerLink="/profile/kyc" (click)="dropdownOpen = false"
-                    class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition">
-                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-                    </svg>
-                    KYC Verification
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-brand-orange/5 hover:text-brand-orange transition-all group/item">
+                    <div class="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0 group-hover/item:bg-purple-100 transition-colors">
+                      <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                      </svg>
+                    </div>
+                    <span class="font-medium">KYC Verification</span>
                   </a>
                 </div>
-                <div class="border-t border-gray-100 py-1">
+
+                <div class="mx-3 border-t border-gray-100"></div>
+
+                <div class="py-1.5 px-1.5">
                   <button type="button" (click)="logout()"
-                    class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-brand-red hover:bg-red-50 transition">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-                    </svg>
-                    Sign out
+                    class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-brand-red hover:bg-red-50 transition-all group/item">
+                    <div class="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0 group-hover/item:bg-red-100 transition-colors">
+                      <svg class="w-4 h-4 text-brand-red" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                      </svg>
+                    </div>
+                    <span class="font-medium">Sign out</span>
                   </button>
                 </div>
               </div>
@@ -219,27 +240,22 @@ export class UserShellComponent implements OnInit {
     return window.innerWidth < 1024;
   }
 
-  get initials(): string {
-    const raw = (this.user?.fullName ?? '').trim();
-    if (!raw) return 'U';
-
-    const letters = raw
-      .split(/\s+/)
-      .filter(Boolean)
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-
-    return letters || raw.slice(0, 1).toUpperCase();
+  get displayName(): string {
+    const name = this.user?.fullName?.trim();
+    if (!name) return this.user?.email?.split('@')[0] || 'Account';
+    const parts = name.split(' ').filter(p => p.length > 0);
+    const firstName = parts[0];
+    const lastName = parts.length > 1 ? parts[parts.length - 1] : '';
+    const full = lastName ? `${firstName} ${lastName}` : firstName;
+    return full.length <= 18 ? full : this.initials;
   }
 
-  get avatarBgClass(): string {
-    const status = this.kycStatus ?? 'NotSubmitted';
-    if (status === 'Approved') return 'from-emerald-500 to-green-600 ring-emerald-300';
-    if (status === 'Pending') return 'from-amber-500 to-orange-600 ring-amber-300';
-    if (status === 'Rejected') return 'from-red-500 to-rose-600 ring-red-300';
-    return 'from-brand-orange to-red-500 ring-brand-orange';
+  get initials(): string {
+    const name = this.user?.fullName?.trim();
+    if (!name) return (this.user?.email?.[0] ?? 'U').toUpperCase();
+    const parts = name.split(' ').filter(p => p.length > 0);
+    if (parts.length === 1) return parts[0][0].toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   }
 
   get kycBadgeClass(): string {

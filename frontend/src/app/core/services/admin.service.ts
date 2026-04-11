@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
-  AdminDashboardDto, UserView, KycSubmissionView, CampaignDto, KycRejectDto, ApiResponse
+  AdminDashboardDto, UserView, PagedUsersResult, KycSubmissionView, CampaignDto, KycRejectDto, ApiResponse
 } from '../models/api.models';
 
 @Injectable({ providedIn: 'root' })
@@ -16,8 +16,13 @@ export class AdminService {
     return this.http.get<ApiResponse<AdminDashboardDto>>(`${this.api}/admin/dashboard`);
   }
 
-  getUsers(): Observable<ApiResponse<UserView[]>> {
-    return this.http.get<ApiResponse<UserView[]>>(`${this.api}/admin/users`);
+  getUsers(page = 1, pageSize = 10, search = '', kycStatus = '', tier = '', status = ''): Observable<ApiResponse<PagedUsersResult>> {
+    const params: Record<string, string> = { page: String(page), pageSize: String(pageSize) };
+    if (search)    params['search']    = search;
+    if (kycStatus) params['kycStatus'] = kycStatus;
+    if (tier)      params['tier']      = tier;
+    if (status)    params['status']    = status;
+    return this.http.get<ApiResponse<PagedUsersResult>>(`${this.api}/admin/users`, { params });
   }
 
   updateUserStatus(userId: string, isActive: boolean): Observable<ApiResponse<string>> {

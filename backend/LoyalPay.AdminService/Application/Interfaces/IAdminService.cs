@@ -8,7 +8,7 @@ namespace LoyalPay.AdminService.Application.Interfaces;
 public interface IAdminService
 {
     Task<ApiResponse<object>> GetDashboardAsync();
-    Task<ApiResponse<List<object>>> GetUsersAsync();
+    Task<ApiResponse<object>> GetUsersPagedAsync(int page, int pageSize, string? search, string? kycStatus, string? tier, string? status);
     Task<ApiResponse<string>> UpdateUserStatusAsync(Guid userId, bool isActive, Guid adminUserId);
 
     /// <summary>

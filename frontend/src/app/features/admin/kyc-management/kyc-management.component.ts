@@ -1,10 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { forkJoin } from 'rxjs';
 import { AdminService } from '../../../core/services/admin.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
-import { KycSubmissionView, UserView } from '../../../core/models/api.models';
+import { KycSubmissionView } from '../../../core/models/api.models';
 
 @Component({
   selector: 'app-kyc-management',
@@ -195,7 +194,6 @@ import { KycSubmissionView, UserView } from '../../../core/models/api.models';
 })
 export class KycManagementComponent implements OnInit {
   submissions: KycSubmissionView[] = [];
-  users: UserView[] = [];
   documentUrls: Record<string, string> = {};
   documentTypes: Record<string, string> = {};
   loadingDoc: string | null = null;
@@ -217,12 +215,8 @@ export class KycManagementComponent implements OnInit {
   constructor(private adminSvc: AdminService, private toast: ToastService) {}
 
   ngOnInit(): void {
-    forkJoin({
-      users: this.adminSvc.getUsers(),
-      kyc: this.adminSvc.getPendingKyc()
-    }).subscribe({
-      next: ({ users, kyc }) => {
-        this.users = users.data ?? [];
+    this.adminSvc.getPendingKyc().subscribe({
+      next: kyc => {
         this.submissions = kyc.data ?? [];
         this.loading = false;
       },
@@ -231,11 +225,11 @@ export class KycManagementComponent implements OnInit {
   }
 
   getUserName(userId: string): string {
-    return this.users.find(u => u.userId === userId)?.fullName ?? 'Unknown User';
+    return this.submissions.find(s => s.userId === userId)?.fullName ?? 'Unknown User';
   }
 
   getUserEmail(userId: string): string {
-    return this.users.find(u => u.userId === userId)?.email ?? userId;
+    return this.submissions.find(s => s.userId === userId)?.email ?? userId;
   }
 
   getUserInitials(userId: string): string {

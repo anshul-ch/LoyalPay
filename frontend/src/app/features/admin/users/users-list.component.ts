@@ -4,15 +4,20 @@ import { FormsModule } from '@angular/forms';
 import { AdminService } from '../../../core/services/admin.service';
 import { UserView } from '../../../core/models/api.models';
 import { ToastService } from '../../../core/services/toast.service';
-import { CurrencyInrPipe } from '../../../shared/pipes/currency-inr.pipe';
+import { Subject } from 'rxjs';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+
+const PAGE_SIZE = 10;
 
 @Component({
   selector: 'app-users-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, CurrencyInrPipe],
+  imports: [CommonModule, FormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="space-y-5 page-enter">
+
+      <!-- Header -->
       <div class="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 class="text-2xl font-bold text-gray-900">Users</h1>
@@ -20,44 +25,49 @@ import { CurrencyInrPipe } from '../../../shared/pipes/currency-inr.pipe';
         </div>
         @if (!loading) {
           <span class="text-sm text-gray-500 font-medium bg-gray-100 px-3 py-1.5 rounded-lg">
-            {{ filtered.length }} of {{ users.length }} users
+            {{ totalCount }} total users
           </span>
         }
       </div>
 
-      <!-- Search & filter bar -->
-      @if (!loading && users.length > 0) {
-        <div class="flex flex-wrap gap-3">
-          <div class="relative flex-1 min-w-48">
-            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-            </svg>
-            <input [(ngModel)]="search" (ngModelChange)="applyFilter()"
-              type="text" placeholder="Search by name or email..."
-              class="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-orange/40 focus:border-brand-orange bg-white">
-          </div>
-          <select [(ngModel)]="kycFilter" (ngModelChange)="applyFilter()"
-            class="px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-orange/40 focus:border-brand-orange bg-white">
-            <option value="">All KYC</option>
-            <option value="Approved">Approved</option>
-            <option value="Pending">Pending</option>
-            <option value="Rejected">Rejected</option>
-            <option value="NotSubmitted">Not Submitted</option>
-          </select>
-          <select [(ngModel)]="statusFilter" (ngModelChange)="applyFilter()"
-            class="px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-orange/40 focus:border-brand-orange bg-white">
-            <option value="">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
+      <!-- Filters -->
+      <div class="flex flex-wrap gap-3">
+        <div class="relative flex-1 min-w-48">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <input [(ngModel)]="search" (ngModelChange)="onSearchChange($event)"
+            type="text" placeholder="Search by name or email..."
+            class="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-orange/40 focus:border-brand-orange bg-white">
         </div>
-      }
+        <select [(ngModel)]="kycFilter" (ngModelChange)="onFilterChange()"
+          class="px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-orange/40 focus:border-brand-orange bg-white">
+          <option value="">All KYC</option>
+          <option value="Approved">Approved</option>
+          <option value="Pending">Pending</option>
+          <option value="Rejected">Rejected</option>
+          <option value="NotSubmitted">Not Submitted</option>
+        </select>
+        <select [(ngModel)]="tierFilter" (ngModelChange)="onFilterChange()"
+          class="px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-orange/40 focus:border-brand-orange bg-white">
+          <option value="">All Tiers</option>
+          <option value="Silver">🥈 Silver</option>
+          <option value="Gold">⭐ Gold</option>
+          <option value="Platinum">✨ Platinum</option>
+        </select>
+        <select [(ngModel)]="statusFilter" (ngModelChange)="onFilterChange()"
+          class="px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-orange/40 focus:border-brand-orange bg-white">
+          <option value="">All Status</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+      </div>
 
       <!-- Loading skeleton -->
       @if (loading) {
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div class="divide-y divide-gray-50">
-            @for (i of [1,2,3,4,5,6]; track i) {
+            @for (i of skeletonRows; track i) {
               <div class="flex items-center gap-4 px-6 py-4 animate-pulse">
                 <div class="w-9 h-9 rounded-full bg-gray-100 flex-shrink-0"></div>
                 <div class="flex-1 space-y-1.5">
@@ -72,26 +82,29 @@ import { CurrencyInrPipe } from '../../../shared/pipes/currency-inr.pipe';
         </div>
       }
 
-      <!-- Desktop table -->
       @if (!loading) {
+        <!-- Desktop table -->
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hidden lg:block">
           <div class="overflow-x-auto">
             <table class="w-full text-sm">
               <thead class="bg-gray-50 border-b border-gray-100">
                 <tr>
+                  <th class="text-left px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider w-12">#</th>
                   <th class="text-left px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">User</th>
                   <th class="text-left px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Phone</th>
                   <th class="text-left px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</th>
                   <th class="text-left px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                   <th class="text-left px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">KYC</th>
-                  <th class="text-right px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Balance / Points</th>
                   <th class="text-left px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Tier</th>
                   <th class="text-left px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Joined</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-50">
-                @for (user of filtered; track user.userId) {
-                  <tr class="hover:bg-gray-50/70 transition">
+                @for (user of users; track user.userId; let i = $index) {
+                  <tr class="hover:bg-gray-50/70 transition-colors">
+                    <td class="px-6 py-4 text-xs text-gray-400 font-medium tabular-nums">
+                      {{ (currentPage - 1) * PAGE_SIZE + i + 1 }}
+                    </td>
                     <td class="px-6 py-4">
                       <div class="flex items-center gap-3">
                         <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold"
@@ -104,7 +117,7 @@ import { CurrencyInrPipe } from '../../../shared/pipes/currency-inr.pipe';
                         </div>
                       </div>
                     </td>
-                    <td class="px-6 py-4 text-gray-700 font-medium text-sm">{{ user.phone || '—' }}</td>
+                    <td class="px-6 py-4 text-gray-700 font-medium">{{ user.phone || '—' }}</td>
                     <td class="px-6 py-4">
                       <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold"
                         [class]="user.role === 'Admin' ? 'bg-brand-yellow-light text-brand-yellow-dark' : 'bg-brand-navy-light text-brand-navy'">
@@ -112,9 +125,8 @@ import { CurrencyInrPipe } from '../../../shared/pipes/currency-inr.pipe';
                       </span>
                     </td>
                     <td class="px-6 py-4">
-                      <button type="button"
+                      <button type="button" (click)="toggleStatus(user)"
                         [disabled]="updatingUserId === user.userId"
-                        (click)="toggleStatus(user)"
                         class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50"
                         [class]="user.isActive ? 'bg-emerald-500' : 'bg-gray-300'"
                         [attr.aria-label]="user.isActive ? 'Deactivate user' : 'Activate user'">
@@ -127,24 +139,25 @@ import { CurrencyInrPipe } from '../../../shared/pipes/currency-inr.pipe';
                         {{ user.kycStatus || 'Not Submitted' }}
                       </span>
                     </td>
-                    <td class="px-6 py-4 text-right">
-                      <p class="font-bold text-gray-900">{{ user.balance || 0 | currencyInr }}</p>
-                      <p class="text-xs font-medium text-brand-orange mt-0.5">{{ user.points || 0 }} pts</p>
-                    </td>
                     <td class="px-6 py-4">
-                      <div class="flex items-center gap-1.5 font-bold text-xs"
-                        [ngClass]="{'text-slate-400': user.tier === 'Silver', 'text-amber-500': user.tier === 'Gold', 'text-gray-800': user.tier === 'Platinum'}">
-                        @if (user.tier === 'Platinum') { <span>✨</span> }
-                        @if (user.tier === 'Gold') { <span>⭐</span> }
-                        {{ user.tier || 'Silver' }}
-                      </div>
+                      <span class="font-semibold text-xs"
+                        [ngClass]="{
+                          'text-slate-400': (user.tier || 'Silver') === 'Silver',
+                          'text-amber-500': user.tier === 'Gold',
+                          'text-cyan-700': user.tier === 'Platinum'
+                        }">
+                        {{ tierIcon(user.tier) }} {{ user.tier || 'Silver' }}
+                      </span>
                     </td>
                     <td class="px-6 py-4 text-gray-500 text-xs">{{ user.createdAt | date:'dd MMM yyyy' }}</td>
                   </tr>
                 }
                 @empty {
                   <tr>
-                    <td colspan="6" class="text-center py-12">
+                    <td colspan="8" class="text-center py-16">
+                      <svg class="w-10 h-10 text-gray-200 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                      </svg>
                       <p class="text-sm text-gray-400">No users match your filters.</p>
                     </td>
                   </tr>
@@ -156,7 +169,7 @@ import { CurrencyInrPipe } from '../../../shared/pipes/currency-inr.pipe';
 
         <!-- Mobile cards -->
         <div class="space-y-3 lg:hidden">
-          @for (user of filtered; track user.userId) {
+          @for (user of users; track user.userId) {
             <article class="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
               <div class="flex items-start justify-between gap-3 mb-3">
                 <div class="flex items-center gap-3">
@@ -178,16 +191,20 @@ import { CurrencyInrPipe } from '../../../shared/pipes/currency-inr.pipe';
                 <span class="text-gray-800 font-medium">{{ user.phone || '—' }}</span>
                 <span class="text-gray-400">Joined</span>
                 <span class="text-gray-800 font-medium">{{ user.createdAt | date:'dd MMM yyyy' }}</span>
-                <span class="text-gray-400">Balance</span>
-                <span class="text-gray-800 font-bold">{{ user.balance || 0 | currencyInr }}</span>
-                <span class="text-gray-400">Points & Tier</span>
-                <span class="text-gray-800 font-medium">{{ user.points || 0 }} pts <span class="px-1.5 py-0.5 rounded text-[10px] ml-1 bg-gray-100">{{ user.tier || 'Silver' }}</span></span>
+                <span class="text-gray-400">Tier</span>
+                <span class="font-semibold text-xs"
+                  [ngClass]="{
+                    'text-slate-400': (user.tier || 'Silver') === 'Silver',
+                    'text-amber-500': user.tier === 'Gold',
+                    'text-cyan-700': user.tier === 'Platinum'
+                  }">
+                  {{ tierIcon(user.tier) }} {{ user.tier || 'Silver' }}
+                </span>
                 <span class="text-gray-400">Role</span>
                 <span class="text-gray-800 font-medium">{{ user.role }}</span>
                 <span class="text-gray-400">Active</span>
-                <button type="button"
+                <button type="button" (click)="toggleStatus(user)"
                   [disabled]="updatingUserId === user.userId"
-                  (click)="toggleStatus(user)"
                   class="justify-self-start relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 disabled:opacity-50"
                   [class]="user.isActive ? 'bg-emerald-500' : 'bg-gray-300'">
                   <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200"
@@ -202,18 +219,82 @@ import { CurrencyInrPipe } from '../../../shared/pipes/currency-inr.pipe';
             </div>
           }
         </div>
+
+        <!-- Pagination -->
+        @if (totalPages > 1) {
+          <div class="flex items-center justify-between gap-4 flex-wrap bg-white border border-gray-100 rounded-2xl px-5 py-3.5 shadow-sm">
+            <p class="text-sm text-gray-500">
+              Showing
+              <span class="font-semibold text-gray-800">{{ (currentPage - 1) * PAGE_SIZE + 1 }}</span>–<span class="font-semibold text-gray-800">{{ min(currentPage * PAGE_SIZE, totalCount) }}</span>
+              of <span class="font-semibold text-gray-800">{{ totalCount }}</span> users
+            </p>
+            <div class="flex items-center gap-1">
+              <button type="button" (click)="goTo(1)" [disabled]="currentPage === 1"
+                class="p-2 rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition" title="First">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
+              </button>
+              <button type="button" (click)="goTo(currentPage - 1)" [disabled]="currentPage === 1"
+                class="p-2 rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition" title="Previous">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+              </button>
+              @for (p of pageNumbers; track p) {
+                @if (p === -1) {
+                  <span class="w-8 text-center text-sm text-gray-400 select-none">…</span>
+                } @else {
+                  <button type="button" (click)="goTo(p)"
+                    class="min-w-[34px] h-[34px] px-2 text-sm font-medium rounded-lg border transition-all"
+                    [class]="p === currentPage
+                      ? 'bg-brand-orange border-brand-orange text-white shadow-sm shadow-brand-orange/25'
+                      : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'">
+                    {{ p }}
+                  </button>
+                }
+              }
+              <button type="button" (click)="goTo(currentPage + 1)" [disabled]="currentPage === totalPages"
+                class="p-2 rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition" title="Next">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+              </button>
+              <button type="button" (click)="goTo(totalPages)" [disabled]="currentPage === totalPages"
+                class="p-2 rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition" title="Last">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
+              </button>
+            </div>
+          </div>
+        }
       }
     </div>
   `
 })
 export class UsersListComponent implements OnInit {
+  readonly PAGE_SIZE = PAGE_SIZE;
+  readonly skeletonRows = Array(PAGE_SIZE).fill(0);
+
   users: UserView[] = [];
-  filtered: UserView[] = [];
   loading = true;
   updatingUserId: string | null = null;
+
   search = '';
   kycFilter = '';
+  tierFilter = '';
   statusFilter = '';
+
+  currentPage = 1;
+  totalPages = 1;
+  totalCount = 0;
+
+  private searchSubject = new Subject<string>();
+
+  get pageNumbers(): number[] {
+    const total = this.totalPages;
+    const cur = this.currentPage;
+    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+    const pages: number[] = [1];
+    if (cur > 3) pages.push(-1);
+    for (let p = Math.max(2, cur - 1); p <= Math.min(total - 1, cur + 1); p++) pages.push(p);
+    if (cur < total - 2) pages.push(-1);
+    pages.push(total);
+    return pages;
+  }
 
   constructor(
     private adminSvc: AdminService,
@@ -222,31 +303,49 @@ export class UsersListComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.adminSvc.getUsers().subscribe({
-      next: r => {
-        this.users = r.data ?? [];
-        this.filtered = [...this.users];
-        this.loading = false;
-        this.cdr.markForCheck();
-      },
-      error: () => {
-        this.loading = false;
-        this.toast.error('Could not load users. Please refresh.');
-        this.cdr.markForCheck();
-      }
+    // Debounce search input — only fires API call 350ms after user stops typing
+    this.searchSubject.pipe(debounceTime(350), distinctUntilChanged()).subscribe(() => {
+      this.currentPage = 1;
+      this.fetchPage();
     });
+    this.fetchPage();
   }
 
-  applyFilter(): void {
-    const q = this.search.toLowerCase();
-    this.filtered = this.users.filter(u => {
-      const matchSearch = !q || u.fullName.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
-      const matchKyc = !this.kycFilter || (u.kycStatus || 'NotSubmitted') === this.kycFilter;
-      const matchStatus = !this.statusFilter ||
-        (this.statusFilter === 'active' ? u.isActive : !u.isActive);
-      return matchSearch && matchKyc && matchStatus;
-    });
+  onSearchChange(value: string): void {
+    this.searchSubject.next(value);
+  }
+
+  onFilterChange(): void {
+    this.currentPage = 1;
+    this.fetchPage();
+  }
+
+  goTo(p: number): void {
+    if (p < 1 || p > this.totalPages || p === this.currentPage) return;
+    this.currentPage = p;
+    this.fetchPage();
+  }
+
+  private fetchPage(): void {
+    this.loading = true;
     this.cdr.markForCheck();
+
+    this.adminSvc.getUsers(this.currentPage, PAGE_SIZE, this.search, this.kycFilter, this.tierFilter, this.statusFilter)
+      .subscribe({
+        next: res => {
+          const data = res.data!;
+          this.users = data.items;
+          this.totalCount = data.totalCount;
+          this.totalPages = data.totalPages;
+          this.loading = false;
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.loading = false;
+          this.toast.error('Could not load users. Please refresh.');
+          this.cdr.markForCheck();
+        }
+      });
   }
 
   toggleStatus(user: UserView): void {
@@ -271,8 +370,16 @@ export class UsersListComponent implements OnInit {
     });
   }
 
+  min(a: number, b: number): number { return Math.min(a, b); }
+
   initials(name: string): string {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  }
+
+  tierIcon(tier: string | undefined): string {
+    if (tier === 'Platinum') return '✨';
+    if (tier === 'Gold') return '⭐';
+    return '🥈';
   }
 
   kycClass(status: string): string {

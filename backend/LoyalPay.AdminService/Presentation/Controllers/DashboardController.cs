@@ -34,9 +34,15 @@ public class DashboardController : ControllerBase
     }
 
     [HttpGet("users")]
-    public async Task<IActionResult> Users()
+    public async Task<IActionResult> Users(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string? search = null,
+        [FromQuery] string? kycStatus = null,
+        [FromQuery] string? tier = null,
+        [FromQuery] string? status = null)
     {
-        var result = await _adminService.GetUsersAsync();
+        var result = await _adminService.GetUsersPagedAsync(page, pageSize, search, kycStatus, tier, status);
         return Ok(result);
     }
 

@@ -4,6 +4,8 @@ import { ReactiveFormsModule, FormBuilder, Validators, AbstractControl } from '@
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { ProfileService } from '../../../core/services/profile.service';
 import { ToastService } from '../../../core/services/toast.service';
+import { AuthService } from '../../../core/services/auth.service';
+import { Router } from '@angular/router';
 
 function passwordValidator(c: AbstractControl) {
   const v = c.value ?? '';
@@ -140,16 +142,29 @@ export class ChangePasswordComponent {
 
   get f() { return this.form.controls; }
 
-  constructor(private fb: FormBuilder, private profileSvc: ProfileService, private toast: ToastService) {}
+  constructor(
+    private fb: FormBuilder,
+    private profileSvc: ProfileService,
+    private toast: ToastService,
+    private auth: AuthService,
+    private router: Router
+  ) {}
 
   submit(): void {
     if (this.form.invalid) return;
     this.loading = true;
     this.profileSvc.changePassword(this.form.value as any).subscribe({
-      next: () => {
+      next: (res) => {
         this.loading = false;
-        this.toast.success('Password updated successfully!');
+        if (!res.success) {
+          this.toast.error(res.message || 'Unable to update password.');
+          return;
+        }
+
+        this.auth.clearTokens();
+        this.toast.success('Password updated successfully. Please log in again.');
         this.form.reset();
+        this.router.navigate(['/login']);
       },
       error: () => { this.loading = false; }
     });

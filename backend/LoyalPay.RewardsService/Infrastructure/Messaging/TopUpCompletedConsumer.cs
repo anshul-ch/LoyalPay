@@ -26,7 +26,7 @@ public class TopUpCompletedConsumer : IConsumer<TopUpCompletedEvent>
             return;
         }
 
-        // Base points: 1 point for every ₹100 topped up.
+        // Base points: 1 point for every INR 100 topped up.
         var points = (int)Math.Floor(context.Message.Amount / 100);
 
         // First top-up bonus: extra 100 points if the user has never earned before.
@@ -55,7 +55,7 @@ public class TopUpCompletedConsumer : IConsumer<TopUpCompletedEvent>
         }
         else
         {
-            description = "+" + points + " pts for top-up of ₹" + context.Message.Amount;
+            description = "+" + points + " pts for top-up of INR " + context.Message.Amount;
         }
 
         var transaction = new RewardTransaction();

@@ -6,7 +6,7 @@ A .NET 8 microservices backend for a digital wallet and loyalty rewards platform
 
 ## Architecture
 
-Five independent ASP.NET Core APIs + one shared library. Each service owns its own SQL Server database and communicates asynchronously via RabbitMQ.
+Six independent ASP.NET Core APIs + one shared library. Each service owns its own SQL Server database and communicates asynchronously via RabbitMQ.
 
 ```
 backend/
@@ -15,6 +15,7 @@ backend/
 ├── LoyalPay.WalletService    Balance, top-ups, transfers, statements (port 5002)
 ├── LoyalPay.RewardsService   Points, tiers, catalog, redemptions (port 5003)
 ├── LoyalPay.AdminService     Dashboard, KYC review, campaigns (port 5004)
+├── LoyalPay.NotificationService Notifications inbox and event-driven alerts (port 5005)
 └── LoyalPay.Shared           Shared DTOs, events, extensions
 ```
 
@@ -109,6 +110,13 @@ Tiers: Silver (0–999 pts) → Gold (1000–4999 pts) → Platinum (5000+ pts)
 
 Points earned: 1 pt per ₹100 topped up + 100 pt first top-up bonus + active campaign bonuses
 
+### Notifications — `/api/notifications/...`
+
+| Method | Path | Auth | Body / Query | Returns |
+|---|---|---|---|---|
+| GET | `/api/notifications?page=1&size=20` | Bearer | pagination query | `{ items, page, size, unreadCount }` |
+| POST | `/api/notifications/{notificationId}/read` | Bearer | — | `{ success, message }` |
+
 ### Admin — `/api/admin/...` (role: Admin)
 
 | Method | Path | Body | Returns |
@@ -130,8 +138,13 @@ Default admin: `admin@loyalpay.com` / `Admin@123`
 
 | Event | Publisher | Consumers |
 |---|---|---|
-| `UserRegisteredEvent` | AuthService (on signup) | WalletService (creates wallet), RewardsService (creates reward account) |
-| `TopUpCompletedEvent` | WalletService (on finish) | RewardsService (awards points + campaign bonuses) |
+| `UserRegisteredEvent` | AuthService (on signup) | WalletService (creates wallet), RewardsService (creates reward account), NotificationService (account created alert) |
+| `UserLoggedInEvent` | AuthService (on login) | NotificationService (login alert) |
+| `ForgotPasswordIssuedEvent` | AuthService (on forgot-password) | NotificationService (temporary password alert) |
+| `TopUpCompletedEvent` | WalletService (on finish) | RewardsService (awards points + campaign bonuses), NotificationService (top-up alert) |
+| `TransferCompletedEvent` | WalletService (on transfer) | RewardsService (sender points), NotificationService (sender + receiver alerts) |
+| `CashbackRedeemedEvent` | RewardsService (on cashback redemption) | WalletService (credit wallet), NotificationService (cashback alert) |
+| `UserNotificationRequestedEvent` | AuthService (on change password) | NotificationService (security alert) |
 
 ---
 
@@ -169,8 +182,6 @@ Copy the example and fill in your values:
 cp .env.example .env
 ```
 
-Edit `.env` — replace every placeholder with real values. The SQL password must satisfy SQL Server complexity rules (uppercase, lowercase, digit, special char).
-
 ### 3 — Start infrastructure
 
 ```bash
@@ -188,6 +199,7 @@ dotnet run --project backend/LoyalPay.AuthService
 dotnet run --project backend/LoyalPay.WalletService
 dotnet run --project backend/LoyalPay.RewardsService
 dotnet run --project backend/LoyalPay.AdminService
+dotnet run --project backend/LoyalPay.NotificationService
 dotnet run --project backend/LoyalPay.Gateway
 ```
 
@@ -202,6 +214,7 @@ Each service auto-migrates its database on startup — no manual `dotnet ef` com
 | WalletService Swagger | http://localhost:5002/swagger |
 | RewardsService Swagger | http://localhost:5003/swagger |
 | AdminService Swagger | http://localhost:5004/swagger |
+| NotificationService Swagger | http://localhost:5005/swagger |
 | RabbitMQ Management | http://localhost:15672 |
 
 ---
@@ -221,11 +234,3 @@ Each service auto-migrates its database on startup — no manual `dotnet ef` com
 | Campaign bonus points | 1 – 100,000 |
 
 ---
-
-## Known Limitations
-
-- **Payment gateway** — top-up is simulated. Call `finish` with `{ success: true }` to credit the wallet. In production this would be a real payment provider webhook.
-- **Email delivery** — `forgot-password` returns the temp password in the response body. In production it should be sent via email only.
-- **No rate limiting** — login, signup, and forgot-password have no throttling. Add middleware before going to production.
-- **No refresh token reuse detection** — rotation is implemented but stolen-token scenarios are not detected.
-- **Admin cross-DB joins** — `GET /api/admin/users` loads all data into memory. Fine for small datasets; add pagination for large ones.

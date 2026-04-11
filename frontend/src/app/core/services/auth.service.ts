@@ -33,7 +33,8 @@ export class AuthService {
         fullName: payload.fullName ?? payload.name ?? payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] ?? '',
         phone: payload.phone ?? '',
         role: payload.role ?? payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] ?? 'User',
-        userId: payload.sub ?? payload.userId ?? payload.nameid ?? payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ?? ''
+        userId: payload.sub ?? payload.userId ?? payload.nameid ?? payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ?? '',
+        requiresPasswordChange: payload.requiresPasswordChange === 'true' || payload.requiresPasswordChange === true
       } as TokenDto;
     } catch {
       return null;
@@ -70,6 +71,10 @@ export class AuthService {
 
   isAdmin(): boolean {
     return this.currentUser$.value?.role === 'Admin';
+  }
+
+  requiresPasswordChange(): boolean {
+    return this.currentUser$.value?.requiresPasswordChange === true;
   }
 
   login(dto: LoginDto): Observable<ApiResponse<TokenDto>> {

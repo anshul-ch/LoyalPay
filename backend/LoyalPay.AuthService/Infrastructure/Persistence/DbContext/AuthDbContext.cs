@@ -27,6 +27,10 @@ public class AuthDbContext : Microsoft.EntityFrameworkCore.DbContext
             .HasIndex(u => u.Email)
             .IsUnique();
 
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.Phone)
+            .IsUnique();
+
         modelBuilder.Entity<RefreshToken>()
             .Property(rt => rt.CreatedAt)
             .HasDefaultValueSql("GETUTCDATE()");

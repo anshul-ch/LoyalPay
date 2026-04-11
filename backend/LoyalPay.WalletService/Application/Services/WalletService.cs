@@ -146,7 +146,7 @@ public class WalletService : IWalletService
         await _ledgerRepository.AddLedgerEntryAsync(ledgerEntry);
         await _topUpRepository.SaveChangesAsync();
 
-        var topUpCompletedEvent = new TopUpCompletedEvent(wallet.UserId, topUp.Amount);
+        var topUpCompletedEvent = new TopUpCompletedEvent(wallet.UserId, topUp.Amount, topUp.TopUpId, topUp.PaymentMethod);
         await _publishEndpoint.Publish(topUpCompletedEvent);
 
         return ApiResponse<string>.Ok("Top-up completed successfully.");
@@ -254,7 +254,8 @@ public class WalletService : IWalletService
             transferRequest.TransferId,
             senderUserId,
             dto.ReceiverUserId,
-            dto.Amount
+            dto.Amount,
+            dto.Note
         ));
 
         return ApiResponse<string>.Ok("Transfer completed successfully.");

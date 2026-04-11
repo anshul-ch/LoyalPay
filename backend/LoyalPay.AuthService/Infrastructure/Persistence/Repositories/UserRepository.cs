@@ -29,6 +29,11 @@ public class UserRepository : IUserRepository
         return await _db.Users.AnyAsync(u => u.Email == email);
     }
 
+    public async Task<bool> PhoneExistsAsync(string phone)
+    {
+        return await _db.Users.AnyAsync(u => u.Phone == phone);
+    }
+
     public async Task AddUserAsync(User user)
     {
         _db.Users.Add(user);

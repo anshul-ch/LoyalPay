@@ -24,6 +24,8 @@ public class User
     [Required]
     public string PasswordHash { get; set; } = string.Empty;
 
+    public bool MustChangePassword { get; set; } = false;
+
     [Required]
     [MaxLength(50)]
     public string Role { get; set; } = "User";
