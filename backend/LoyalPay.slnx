@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="LoyalPay.AdminService/LoyalPay.AdminService.csproj" />
+  <Project Path="LoyalPay.AuthService/LoyalPay.AuthService.csproj" />
+  <Project Path="LoyalPay.Gateway/LoyalPay.Gateway.csproj" />
+  <Project Path="LoyalPay.RewardsService/LoyalPay.RewardsService.csproj" />
+  <Project Path="LoyalPay.Shared/LoyalPay.Shared.csproj" />
+  <Project Path="LoyalPay.WalletService/LoyalPay.WalletService.csproj" />
+</Solution>

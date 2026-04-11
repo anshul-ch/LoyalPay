@@ -1,0 +1,34 @@
+# Visual Studio
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+
+# Build results
+[Bb]in/
+[Oo]bj/
+
+# Angular
+node_modules/
+dist/
+.angular/
+
+# Environment Variables & Secrets - DO NOT COMMIT THESE
+.env
+*.env
+appsettings.json
+appsettings.Development.json
+appsettings.Production.json
+appsettings.*.json
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# KYC Upload Directory
+wwwroot/kyc/
+backend/LoyalPay.AuthService/wwwroot/kyc/
