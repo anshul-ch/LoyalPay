@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { RouterLink, Router } from '@angular/router';
@@ -9,6 +9,7 @@ import { ToastService } from '../../../core/services/toast.service';
   selector: 'app-login',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="min-h-screen flex">
 
@@ -227,6 +228,7 @@ export class LoginComponent {
 
   submit(): void {
     if (this.form.invalid) return;
+
     this.loading = true;
     this.loginError = null;
     this.auth.login(this.form.value as any).subscribe({
@@ -245,7 +247,11 @@ export class LoginComponent {
       },
       error: (err) => {
         this.loading = false;
-        this.loginError = err?.error?.message || 'Incorrect email or password. Please try again.';
+        if (err?.name === 'TimeoutError') {
+          this.loginError = 'Login timed out. Please try again.';
+        } else {
+          this.loginError = err?.error?.message || 'Incorrect email or password. Please try again.';
+        }
         this.form.get('password')?.reset();
       }
     });

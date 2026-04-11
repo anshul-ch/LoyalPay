@@ -1,4 +1,5 @@
-import { Component, OnInit, HostListener } from '@angular/core';
+﻿import { Component, OnInit, HostListener, DestroyRef, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
@@ -75,6 +76,14 @@ import { TokenDto } from '../../core/models/api.models';
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/>
             </svg>
             Campaigns
+          </a>
+          <a routerLink="/admin/rewards" routerLinkActive="bg-brand-orange text-white"
+             (click)="closeSidebarOnMobile()"
+             class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-300 hover:bg-white/10 hover:text-white transition text-sm font-medium">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.5 0-3 .8-3 2.2 0 1.4 1.2 2 3 2.4 1.8.4 3 .9 3 2.4 0 1.4-1.5 2.2-3 2.2m0-9.2V6m0 12v-1.2M6 12a6 6 0 1012 0 6 6 0 00-12 0z"/>
+            </svg>
+            Rewards
           </a>
         </nav>
 
@@ -230,16 +239,22 @@ export class AdminShellComponent implements OnInit {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   }
 
+  private readonly destroyRef = inject(DestroyRef);
+
   constructor(private auth: AuthService, private router: Router) {}
 
   ngOnInit(): void {
-    this.auth.currentUser$.subscribe(u => this.user = u);
+    this.auth.currentUser$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(u => this.user = u);
     this.sidebarOpen = window.innerWidth >= 1024;
   }
 
+  private resizeTimer = 0;
   @HostListener('window:resize')
   onResize(): void {
-    if (window.innerWidth >= 1024) this.sidebarOpen = true;
+    clearTimeout(this.resizeTimer);
+    this.resizeTimer = window.setTimeout(() => {
+      if (window.innerWidth >= 1024) this.sidebarOpen = true;
+    }, 100);
   }
 
   toggleDropdown(event: Event): void {
@@ -259,3 +274,4 @@ export class AdminShellComponent implements OnInit {
     });
   }
 }
+

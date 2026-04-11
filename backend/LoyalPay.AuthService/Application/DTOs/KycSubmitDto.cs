@@ -16,6 +16,6 @@ public class KycSubmitDto
 
     [Required(ErrorMessage = "File is required.")]
     [MinLength(10, ErrorMessage = "The uploaded file seems invalid (too short).")]
-    [MaxLength(5000000, ErrorMessage = "File is too large. Maximum size is 5MB.")]
+    [MaxLength(8000000, ErrorMessage = "File payload is too large.")]
     public string FileBase64 { get; set; } = string.Empty;
 }

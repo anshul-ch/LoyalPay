@@ -49,7 +49,7 @@ public class DashboardController : ControllerBase
     [HttpPatch("users/{userId}/status")]
     public async Task<IActionResult> UpdateUserStatus(Guid userId, [FromBody] UpdateUserStatusDto dto)
     {
-        var result = await _adminService.UpdateUserStatusAsync(userId, dto.IsActive, GetUserId());
+        var result = await _adminService.UpdateUserStatusAsync(userId, dto.IsActive, dto.Reason, GetUserId());
         return Ok(result);
     }
 }

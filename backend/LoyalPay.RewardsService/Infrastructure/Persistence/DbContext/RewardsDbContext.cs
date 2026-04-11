@@ -30,6 +30,7 @@ public class RewardsDbContext : Microsoft.EntityFrameworkCore.DbContext
 
         modelBuilder.Entity<CatalogItem>().Property(x => x.ItemId).HasDefaultValueSql("NEWID()");
         modelBuilder.Entity<CatalogItem>().Property(x => x.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+        modelBuilder.Entity<CatalogItem>().HasIndex(x => new { x.IsActive, x.ExpiresAt });
 
         modelBuilder.Entity<Redemption>().Property(x => x.RedemptionId).HasDefaultValueSql("NEWID()");
         modelBuilder.Entity<Redemption>().Property(x => x.CreatedAt).HasDefaultValueSql("GETUTCDATE()");

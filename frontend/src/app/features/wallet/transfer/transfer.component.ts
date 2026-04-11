@@ -1,4 +1,5 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy, ChangeDetectorRef, DestroyRef, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { WalletService } from '../../../core/services/wallet.service';
@@ -12,15 +13,15 @@ import { AuthService } from '../../../core/services/auth.service';
 @Component({
   selector: 'app-transfer',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, ReactiveFormsModule, ConfirmDialogComponent, CurrencyInrPipe],
   template: `
     <div class="max-w-lg mx-auto space-y-6 page-enter">
       <div>
-        <h1 class="text-2xl font-bold text-gray-900">Transfer Money</h1>
-        <p class="text-sm text-gray-500 mt-1">Send money to another LoyalPay user</p>
+        <h1 class="text-2xl font-bold text-gray-900">Pay</h1>
+        <p class="text-sm text-gray-500 mt-1">Pay another verified LoyalPay user</p>
       </div>
 
-      <!-- Step indicator -->
       <div class="flex items-center gap-2">
         <div class="flex items-center gap-2">
           <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
@@ -35,7 +36,6 @@ import { AuthService } from '../../../core/services/auth.service';
         </div>
       </div>
 
-      <!-- Step 1: Lookup -->
       @if (step === 1) {
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
           <h2 class="font-semibold text-gray-800 mb-4">Find Recipient</h2>
@@ -50,6 +50,9 @@ import { AuthService } from '../../../core/services/auth.service';
             </div>
             @if (kycStatus !== 'Approved') {
               <div class="p-3 bg-red-50 text-red-700 text-sm rounded-xl font-medium">Please approve your KYC to transfer money.</div>
+            }
+            @if (transferError) {
+              <p class="text-brand-red text-xs">{{ transferError }}</p>
             }
             <button type="submit" [disabled]="lookupForm.invalid || lookupLoading || kycStatus !== 'Approved'"
               class="btn-primary w-full justify-center inline-flex items-center gap-2">
@@ -67,7 +70,6 @@ import { AuthService } from '../../../core/services/auth.service';
         </div>
       }
 
-      <!-- Step 2: Transfer -->
       @if (step === 2 && receiver) {
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-5">
           <div class="p-4 rounded-xl border bg-brand-navy text-white border-brand-navy shadow-sm">
@@ -75,7 +77,6 @@ import { AuthService } from '../../../core/services/auth.service';
             <p class="text-2xl font-black mt-1">{{ currentBalance | currencyInr }}</p>
           </div>
 
-          <!-- Recipient info -->
           <div class="flex items-center gap-3 p-4 bg-emerald-50 border border-emerald-100 rounded-xl">
             <div class="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0">
               <span class="text-emerald-700 font-bold text-sm">{{ receiver.fullName[0].toUpperCase() }}</span>
@@ -92,11 +93,11 @@ import { AuthService } from '../../../core/services/auth.service';
 
           <form [formGroup]="transferForm" (ngSubmit)="confirmTransfer()" class="space-y-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1.5">Amount (₹)</label>
-              <input formControlName="amount" type="number" placeholder="1 – 25,000"
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Amount (INR)</label>
+              <input formControlName="amount" type="number" placeholder="1 - 25,000"
                 class="input" [class.input-error]="tf['amount'].invalid && tf['amount'].touched">
               @if (tf['amount'].invalid && tf['amount'].touched) {
-                <p class="text-brand-red text-xs mt-1">Amount must be between ₹1 and ₹25,000.</p>
+                <p class="text-brand-red text-xs mt-1">Amount must be between INR 1 and INR 25,000.</p>
               }
               @if (exceedsBalance) {
                 <p class="text-brand-red text-xs mt-1">Insufficient balance for this transfer.</p>
@@ -104,11 +105,9 @@ import { AuthService } from '../../../core/services/auth.service';
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1.5">Note (optional)</label>
-              <input formControlName="note" type="text" placeholder="What's this for?"
-                class="input">
+              <input formControlName="note" type="text" placeholder="What's this for?" class="input">
             </div>
-            <button type="submit" [disabled]="transferForm.invalid || exceedsBalance"
-              class="btn-primary w-full justify-center">
+            <button type="submit" [disabled]="transferForm.invalid || exceedsBalance" class="btn-primary w-full justify-center">
               Review Transfer
             </button>
           </form>
@@ -117,9 +116,9 @@ import { AuthService } from '../../../core/services/auth.service';
 
       <app-confirm-dialog
         [visible]="showConfirm"
-        title="Confirm Transfer"
+        title="Confirm Payment"
         [message]="confirmMessage"
-        confirmLabel="Transfer Now"
+        confirmLabel="Pay Now"
         (confirmed)="doTransfer()"
         (cancelled)="showConfirm = false">
       </app-confirm-dialog>
@@ -131,6 +130,7 @@ export class TransferComponent {
   lookupLoading = false;
   receiver: LookupDto | null = null;
   showConfirm = false;
+  transferError = '';
   kycStatus: string | null = null;
   currentBalance = 0;
   senderName = 'You';
@@ -145,7 +145,7 @@ export class TransferComponent {
 
   get confirmMessage(): string {
     const amt = this.transferForm.value.amount ?? 0;
-    return `Transfer ₹${amt.toLocaleString('en-IN')} to ${this.receiver?.fullName}?`;
+    return `Pay INR ${amt.toLocaleString('en-IN')} to ${this.receiver?.fullName}?`;
   }
 
   get exceedsBalance(): boolean {
@@ -153,28 +153,66 @@ export class TransferComponent {
     return amt > this.currentBalance;
   }
 
+  private readonly destroyRef = inject(DestroyRef);
+
   constructor(
     private fb: FormBuilder,
     private walletSvc: WalletService,
     private profileSvc: ProfileService,
     private auth: AuthService,
-    private toast: ToastService
+    private toast: ToastService,
+    private cdr: ChangeDetectorRef
   ) {
-    this.profileSvc.getKycStatus().subscribe(r => this.kycStatus = r.data?.status ?? null);
-    this.walletSvc.getBalance().subscribe(r => this.currentBalance = r.data?.balance ?? 0);
-    this.auth.currentUser$.subscribe(u => this.senderName = u?.fullName || 'You');
+    this.profileSvc.getKycStatus().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(r => {
+      this.kycStatus = (r.data as any)?.status ?? (r.data as any)?.Status ?? null;
+      this.cdr.markForCheck();
+    });
+
+    this.walletSvc.getBalance().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(r => {
+      this.currentBalance = r.data?.balance ?? 0;
+      this.cdr.markForCheck();
+    });
+
+    this.auth.currentUser$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(u => {
+      this.senderName = u?.fullName || 'You';
+      this.cdr.markForCheck();
+    });
   }
 
   lookup(): void {
     if (this.lookupForm.invalid) return;
     this.lookupLoading = true;
-    this.walletSvc.lookupByEmail(this.lookupForm.value.email!).subscribe({
+    this.transferError = '';
+    this.walletSvc.lookupByEmail(this.lookupForm.value.email!).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: res => {
         this.lookupLoading = false;
-        if (res.data) { this.receiver = res.data; this.step = 2; }
-        else this.toast.error('User not found.');
+        if (res.data) {
+          if (res.data.isActive === false) {
+            this.transferError = 'Recipient account is inactive.';
+            this.cdr.markForCheck();
+            return;
+          }
+
+          const status = (res.data.kycStatus ?? '').toLowerCase();
+          if (status !== 'approved') {
+            this.transferError = 'Recipient KYC is not approved. Transfer is not allowed.';
+            this.cdr.markForCheck();
+            return;
+          }
+
+          this.receiver = res.data;
+          this.step = 2;
+        } else {
+          this.transferError = 'Recipient not found.';
+          this.toast.error('User not found.');
+        }
+        this.cdr.markForCheck();
       },
-      error: () => { this.lookupLoading = false; }
+      error: () => {
+        this.lookupLoading = false;
+        this.transferError = 'Unable to find recipient right now.';
+        this.cdr.markForCheck();
+      }
     });
   }
 
@@ -185,25 +223,34 @@ export class TransferComponent {
 
   doTransfer(): void {
     this.showConfirm = false;
+    this.transferError = '';
+
     this.walletSvc.transfer({
       receiverUserId: this.receiver!.userId,
       amount: this.transferForm.value.amount!,
       note: this.transferForm.value.note || undefined,
       receiverName: this.receiver?.fullName,
       senderName: this.senderName
-    }).subscribe({
-      next: (res) => {
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: res => {
         if (!res.success) {
+          this.transferError = res.message || 'Transfer failed.';
           this.toast.error(res.message || 'Transfer failed.');
+          this.cdr.markForCheck();
           return;
         }
 
-        this.toast.success('Transfer successful!');
+        this.toast.success('Payment successful!');
         this.currentBalance = Math.max(0, this.currentBalance - (this.transferForm.value.amount ?? 0));
         this.step = 1;
         this.receiver = null;
         this.transferForm.reset();
         this.lookupForm.reset();
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.transferError = 'Transfer could not be completed right now.';
+        this.cdr.markForCheck();
       }
     });
   }

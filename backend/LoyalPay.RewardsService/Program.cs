@@ -85,6 +85,14 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<RewardsDbContext>();
     db.Database.Migrate();
 
+    var now = DateTime.UtcNow;
+    var expired = db.CatalogItems.Where(c => c.ExpiresAt != null && c.ExpiresAt <= now).ToList();
+    if (expired.Count > 0)
+    {
+        db.CatalogItems.RemoveRange(expired);
+        db.SaveChanges();
+    }
+
     if (!db.CatalogItems.Any())
     {
         db.CatalogItems.AddRange(

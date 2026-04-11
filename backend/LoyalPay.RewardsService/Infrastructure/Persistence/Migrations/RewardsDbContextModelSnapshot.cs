@@ -38,6 +38,9 @@ namespace LoyalPay.RewardsService.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
@@ -58,6 +61,8 @@ namespace LoyalPay.RewardsService.Infrastructure.Persistence.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("ItemId");
+
+                    b.HasIndex("IsActive", "ExpiresAt");
 
                     b.ToTable("CatalogItems");
                 });
@@ -187,6 +192,47 @@ namespace LoyalPay.RewardsService.Infrastructure.Persistence.Migrations
                     b.HasKey("TxnId");
 
                     b.ToTable("RewardTransactions");
+                });
+
+            modelBuilder.Entity("LoyalPay.Shared.Entities.Campaign", b =>
+                {
+                    b.Property<Guid>("CampaignId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasDefaultValueSql("NEWID()");
+
+                    b.Property<int>("BonusPoints")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("CampaignId");
+
+                    b.ToTable("Campaigns", null, t =>
+                        {
+                            t.ExcludeFromMigrations();
+                        });
                 });
 #pragma warning restore 612, 618
         }

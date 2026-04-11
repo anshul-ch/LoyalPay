@@ -31,6 +31,19 @@ public class TransferCompletedConsumer : IConsumer<TransferCompletedEvent>
             return;
         }
 
+        // Do not award points on every transfer: low value transfers get no points.
+        if (amount < 300m)
+        {
+            return;
+        }
+
+        // Probabilistic awarding to avoid rewarding every single payment.
+        var random = Random.Shared.Next(100);
+        if (random > 59)
+        {
+            return;
+        }
+
         var account = await _db.RewardAccounts.FirstOrDefaultAsync(r => r.UserId == userId);
         if (account == null)
         {

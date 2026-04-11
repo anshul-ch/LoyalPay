@@ -1,3 +1,9 @@
 namespace LoyalPay.Shared.Events;
 
-public record UserLoggedInEvent(Guid UserId, string Email, string FullName, DateTime LoggedInAtUtc);
+public record UserLoggedInEvent(
+    Guid UserId,
+    string Email,
+    string FullName,
+    DateTime LoggedInAtUtc,
+    string? Browser = null,
+    string? OperatingSystem = null);

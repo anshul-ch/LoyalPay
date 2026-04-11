@@ -5,4 +5,6 @@ public record TransferCompletedEvent(
     Guid SenderUserId,
     Guid ReceiverUserId,
     decimal Amount,
-    string? Note);
+    string? Note,
+    string? SenderName = null,
+    string? ReceiverName = null);

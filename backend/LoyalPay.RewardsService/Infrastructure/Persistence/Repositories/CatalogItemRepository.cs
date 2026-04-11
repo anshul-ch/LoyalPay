@@ -24,6 +24,19 @@ public class CatalogItemRepository : ICatalogItemRepository
         return await _db.CatalogItems.FindAsync(catalogId);
     }
 
+    public async Task<List<CatalogItem>> GetExpiredCatalogItemsAsync(DateTime nowUtc)
+    {
+        return await _db.CatalogItems
+            .Where(c => c.ExpiresAt != null && c.ExpiresAt <= nowUtc)
+            .ToListAsync();
+    }
+
+    public async Task RemoveCatalogItemsAsync(List<CatalogItem> items)
+    {
+        _db.CatalogItems.RemoveRange(items);
+        await Task.CompletedTask;
+    }
+
     public async Task AddCatalogItemAsync(CatalogItem catalogItem)
     {
         _db.CatalogItems.Add(catalogItem);

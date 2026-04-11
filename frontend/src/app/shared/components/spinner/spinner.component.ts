@@ -33,6 +33,7 @@ export class SpinnerComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.sub = this.loadingService.loading$.subscribe(loading => {
       if (loading) {
+        clearTimeout(this.timer);
         // Only show after 300ms to avoid flashing on fast requests
         this.timer = setTimeout(() => this.visible = true, 300);
       } else {

@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, tap } from 'rxjs';
+import { BehaviorSubject, Observable, tap, timeout } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   TokenDto, LoginDto, SignupDto, ForgotPasswordDto, RefreshRequestDto, ApiResponse
@@ -11,10 +11,34 @@ export class AuthService {
   private readonly ACCESS_KEY = 'lp_access';
   private readonly REFRESH_KEY = 'lp_refresh';
   private readonly api = environment.apiUrl;
-
   currentUser$ = new BehaviorSubject<TokenDto | null>(this.loadUser());
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) {
+    window.addEventListener('beforeunload', () => {
+      this.sendLogoutBeacon();
+    });
+  }
+
+  private sendLogoutBeacon(): void {
+    const tokens = this.getStoredTokens();
+    if (!tokens?.refreshToken) return;
+
+    const payload = JSON.stringify({ refreshToken: tokens.refreshToken });
+    const url = `${this.api}/logout`;
+
+    if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+      const body = new Blob([payload], { type: 'application/json' });
+      navigator.sendBeacon(url, body);
+      return;
+    }
+
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: payload,
+      keepalive: true
+    }).catch(() => undefined);
+  }
 
   private getToken(key: string): string | null {
     return sessionStorage.getItem(key) ?? localStorage.getItem(key);
@@ -79,8 +103,9 @@ export class AuthService {
 
   login(dto: LoginDto): Observable<ApiResponse<TokenDto>> {
     return this.http.post<ApiResponse<TokenDto>>(`${this.api}/login`, dto).pipe(
+      timeout(10000),
       tap(res => {
-        if (res.data) {
+        if (res.success && res.data) {
           this.storeTokens(res.data);
           this.currentUser$.next(res.data);
         }
@@ -105,7 +130,7 @@ export class AuthService {
     const body: RefreshRequestDto = { refreshToken: tokens?.refreshToken ?? '' };
     return this.http.post<ApiResponse<TokenDto>>(`${this.api}/refresh`, body).pipe(
       tap(res => {
-        if (res.data) {
+        if (res.success && res.data) {
           this.storeTokens(res.data);
           this.currentUser$.next(res.data);
         }

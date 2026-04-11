@@ -1,4 +1,5 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+﻿import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, DestroyRef, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AdminService } from '../../../core/services/admin.service';
@@ -8,6 +9,7 @@ import { AdminDashboardDto } from '../../../core/models/api.models';
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, RouterLink, CurrencyInrPipe],
   template: `
     <div class="space-y-6 page-enter">
@@ -160,10 +162,12 @@ export class AdminDashboardComponent implements OnInit {
   stats: AdminDashboardDto | null = null;
   loading = true;
 
+  private readonly destroyRef = inject(DestroyRef);
+
   constructor(private adminSvc: AdminService, private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
-    this.adminSvc.getDashboard().subscribe({
+    this.adminSvc.getDashboard().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: r => { this.stats = r.data ?? null; this.loading = false; this.cdr.markForCheck(); },
       error: () => { this.loading = false; this.cdr.markForCheck(); }
     });
@@ -174,3 +178,10 @@ export class AdminDashboardComponent implements OnInit {
     return Math.min((count / total) * 100, 100) + '%';
   }
 }
+
+
+
+
+
+
+

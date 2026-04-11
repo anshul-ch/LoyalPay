@@ -1,4 +1,5 @@
-import { Component, OnInit, HostListener } from '@angular/core';
+﻿import { Component, OnInit, HostListener, DestroyRef, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
@@ -51,7 +52,7 @@ import { TokenDto } from '../../core/models/api.models';
             </svg>
             Dashboard
           </a>
-          <a routerLink="/wallet" routerLinkActive="bg-brand-orange text-white"
+          <a [routerLink]="walletPrimaryLink" routerLinkActive="bg-brand-orange text-white"
              (click)="closeSidebarOnMobile()"
              class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-300 hover:bg-white/10 hover:text-white transition text-sm font-medium">
             <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -84,7 +85,7 @@ import { TokenDto } from '../../core/models/api.models';
             <p class="text-amber-50 text-xs mt-0.5 font-semibold">Complete KYC to unlock all features</p>
             <a routerLink="/profile/kyc" (click)="closeSidebarOnMobile()"
               class="mt-1.5 text-xs text-white hover:text-amber-100 font-bold block">
-              Verify now →
+              Verify now ->
             </a>
           </div>
         }
@@ -236,6 +237,10 @@ export class UserShellComponent implements OnInit {
   dropdownOpen = false;
   kycStatus: string | null = null;
 
+  get walletPrimaryLink(): string {
+    return this.kycStatus === 'Approved' ? '/wallet' : '/profile/kyc';
+  }
+
   get isMobile(): boolean {
     return window.innerWidth < 1024;
   }
@@ -270,6 +275,8 @@ export class UserShellComponent implements OnInit {
     return this.kycStatus ?? 'NotSubmitted';
   }
 
+  private readonly destroyRef = inject(DestroyRef);
+
   constructor(
     private auth: AuthService,
     private profileSvc: ProfileService,
@@ -277,16 +284,20 @@ export class UserShellComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.auth.currentUser$.subscribe(u => this.user = u);
+    this.auth.currentUser$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(u => this.user = u);
     this.sidebarOpen = window.innerWidth >= 1024;
-    this.profileSvc.getKycStatus().subscribe(r => {
+    this.profileSvc.getKycStatus().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(r => {
       this.kycStatus = r.data?.status ?? null;
     });
   }
 
+  private resizeTimer = 0;
   @HostListener('window:resize')
   onResize(): void {
-    if (window.innerWidth >= 1024) this.sidebarOpen = true;
+    clearTimeout(this.resizeTimer);
+    this.resizeTimer = window.setTimeout(() => {
+      if (window.innerWidth >= 1024) this.sidebarOpen = true;
+    }, 100);
   }
 
   toggleDropdown(event: Event): void {
@@ -306,3 +317,4 @@ export class UserShellComponent implements OnInit {
     });
   }
 }
+

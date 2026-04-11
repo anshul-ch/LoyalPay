@@ -102,13 +102,21 @@ Transfer flow: call `GET /api/profile/lookup?email=` first to resolve email → 
 | Method | Path | Auth | Body | Returns |
 |---|---|---|---|---|
 | GET | `/api/rewards/summary` | Bearer | — | `{ totalPoints, tier, tierProgress }` |
-| GET | `/api/rewards/catalog` | No | — | `[{ itemId, name, description, itemType, pointsCost, isActive }]` |
+| GET | `/api/rewards/catalog` | No | — | `[{ itemId, name, description, itemType, pointsCost, isActive, expiresAt }]` |
 | POST | `/api/rewards/redeem` | Bearer | `{ itemId }` | `{ success, message }` |
 | GET | `/api/rewards/history` | Bearer | — | `[{ transactionId, transactionType, points, description, createdAt }]` |
 
 Tiers: Silver (0–999 pts) → Gold (1000–4999 pts) → Platinum (5000+ pts)
 
-Points earned: 1 pt per ₹100 topped up + 100 pt first top-up bonus + active campaign bonuses
+Points earned:
+
+- Top-up: 1 point per INR 200 + 100 first top-up bonus
+- Pay/Transfer: 1 point per INR 100 (not for every transfer; low-value and probabilistic gating applied)
+
+Catalog reward expiry:
+
+- Rewards created in admin include expiry (1 to 4 months based on points cost)
+- Expired rewards are removed from catalog data
 
 ### Notifications — `/api/notifications/...`
 
@@ -129,6 +137,15 @@ Points earned: 1 pt per ₹100 topped up + 100 pt first top-up bonus + active ca
 | POST | `/api/admin/kyc/{id}/approve` | — | `{ success, message }` |
 | POST | `/api/admin/kyc/{id}/reject` | `{ rejectionNote? }` | `{ success, message }` |
 | POST | `/api/admin/campaigns` | `{ name, description, bonusPoints, startDate, endDate }` | campaign object |
+| GET | `/api/admin/campaigns` | — | all campaigns (active + past) |
+| PATCH | `/api/admin/campaigns/{campaignId}/deactivate` | — | `{ success, message }` |
+| PATCH | `/api/admin/campaigns/{campaignId}/activate` | — | `{ success, message }` |
+| DELETE | `/api/admin/campaigns/{campaignId}` | — | `{ success, message }` |
+| POST | `/api/admin/campaigns/rewards` | `{ name, description, itemType, pointsCost, stock }` | reward object with `expiresAt` |
+| GET | `/api/admin/campaigns/rewards` | — | all rewards with expiry |
+| PATCH | `/api/admin/campaigns/rewards/{rewardId}/deactivate` | — | `{ success, message }` |
+| PATCH | `/api/admin/campaigns/rewards/{rewardId}/activate` | — | `{ success, message }` |
+| DELETE | `/api/admin/campaigns/rewards/{rewardId}` | — | `{ success, message }` |
 
 Default admin: `admin@loyalpay.com` / `Admin@123`
 
@@ -192,7 +209,14 @@ This starts SQL Server on port 1433 and RabbitMQ on ports 5672 / 15672. Database
 
 ### 4 — Run the services
 
-Open five terminals (or use your IDE's multi-run feature):
+Use scripts (recommended):
+
+```bash
+./startbackend.ps1
+./stopbackend.ps1
+```
+
+Or run manually in separate terminals:
 
 ```bash
 dotnet run --project backend/LoyalPay.AuthService
@@ -216,6 +240,22 @@ Each service auto-migrates its database on startup — no manual `dotnet ef` com
 | AdminService Swagger | http://localhost:5004/swagger |
 | NotificationService Swagger | http://localhost:5005/swagger |
 | RabbitMQ Management | http://localhost:15672 |
+
+---
+
+## Git Ignore Policy
+
+This repository intentionally ignores local/runtime artifacts. Do not commit:
+
+- secrets/config: `.env`, `*.env`, `appsettings*.json`
+- build artifacts: `bin/`, `obj/`, `dist/`, `.angular/`, `node_modules/`
+- local IDE/workspace: `.vs/`, `.idea/`, `*.user`, `*.suo`, `.kiro/`
+- local runtime files: `.loyalpay-service-pids.json`, `*.log`
+- local docs/scripts by current policy: `*.md`, `*.ps1`
+
+Important note:
+
+- This `README.md` and `startbackend.ps1`/`stopbackend.ps1` are present in your current workspace, but with your current `.gitignore` policy they are ignored for future tracking unless you change that policy.
 
 ---
 

@@ -15,13 +15,24 @@ public class UserLoggedInConsumer : IConsumer<UserLoggedInEvent>
 
     public async Task Consume(ConsumeContext<UserLoggedInEvent> context)
     {
+        var msg = context.Message;
+
+        var details = new System.Text.StringBuilder();
+        details.Append($"A successful sign-in to your LoyalPay account was recorded on {msg.LoggedInAtUtc:dd MMM yyyy} at {msg.LoggedInAtUtc:HH:mm:ss} UTC.");
+        details.Append($"\n||Date:{msg.LoggedInAtUtc:dd MMM yyyy, HH:mm:ss} UTC");
+        if (!string.IsNullOrWhiteSpace(msg.Browser))
+            details.Append($"\n||Browser:{msg.Browser}");
+        if (!string.IsNullOrWhiteSpace(msg.OperatingSystem))
+            details.Append($"\n||Operating System:{msg.OperatingSystem}");
+        details.Append($"\n||Account:{msg.FullName}");
+
         await _notificationService.CreateAsync(
-            context.Message.UserId,
+            msg.UserId,
             "Security",
-            "New login",
-            $"A login was detected for your account on {context.Message.LoggedInAtUtc:yyyy-MM-dd HH:mm:ss} UTC.",
-            context.Message.LoggedInAtUtc,
-            context.Message.Email,
-            context.Message.FullName);
+            "New sign-in detected",
+            details.ToString(),
+            msg.LoggedInAtUtc,
+            msg.Email,
+            msg.FullName);
     }
 }

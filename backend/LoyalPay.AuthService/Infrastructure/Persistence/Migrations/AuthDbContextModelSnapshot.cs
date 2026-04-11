@@ -138,6 +138,10 @@ namespace LoyalPay.AuthService.Infrastructure.Persistence.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
+                    b.Property<string>("InactiveReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<string>("KycDocumentNumber")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");

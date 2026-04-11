@@ -4,6 +4,8 @@ using LoyalPay.AdminService.Domain.Entities;
 using LoyalPay.AdminService.Infrastructure.Persistence.DbContext;
 using LoyalPay.Shared.Common;
 using LoyalPay.Shared.Entities;
+using LoyalPay.Shared.Events;
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 
 namespace LoyalPay.AdminService.Application.Services;
@@ -13,12 +15,26 @@ public class AdminService : IAdminService
     private readonly AdminAuthDbContext _authDb;
     private readonly AdminWalletDbContext _walletDb;
     private readonly AdminRewardsDbContext _rewardsDb;
+    private readonly IPublishEndpoint _publishEndpoint;
 
-    public AdminService(AdminAuthDbContext authDb, AdminWalletDbContext walletDb, AdminRewardsDbContext rewardsDb)
+    public AdminService(
+        AdminAuthDbContext authDb,
+        AdminWalletDbContext walletDb,
+        AdminRewardsDbContext rewardsDb,
+        IPublishEndpoint publishEndpoint)
     {
         _authDb = authDb;
         _walletDb = walletDb;
         _rewardsDb = rewardsDb;
+        _publishEndpoint = publishEndpoint;
+    }
+
+    private static int GetRewardExpiryMonths(int pointsCost)
+    {
+        if (pointsCost <= 300) return 1;
+        if (pointsCost <= 1000) return 2;
+        if (pointsCost <= 3000) return 3;
+        return 4;
     }
 
     public async Task<ApiResponse<object>> GetDashboardAsync()
@@ -91,6 +107,7 @@ public class AdminService : IAdminService
                 u.Role,
                 u.KycStatus,
                 u.IsActive,
+                u.InactiveReason,
                 u.KycDocumentType,
                 u.KycDocumentNumber,
                 u.KycRejectionNote,
@@ -120,12 +137,17 @@ public class AdminService : IAdminService
         return ApiResponse<object>.Ok(result);
     }
 
-    public async Task<ApiResponse<string>> UpdateUserStatusAsync(Guid userId, bool isActive, Guid adminUserId)
+    public async Task<ApiResponse<string>> UpdateUserStatusAsync(Guid userId, bool isActive, string? reason, Guid adminUserId)
     {
         var user = await _authDb.Users.FirstOrDefaultAsync(u => u.UserId == userId && u.Role == "User");
         if (user == null)
         {
             return ApiResponse<string>.Fail("User not found.");
+        }
+
+        if (!isActive && string.IsNullOrWhiteSpace(reason))
+        {
+            return ApiResponse<string>.Fail("Reason is required when setting a user inactive.");
         }
 
         if (user.IsActive == isActive)
@@ -134,16 +156,27 @@ public class AdminService : IAdminService
         }
 
         user.IsActive = isActive;
+        user.InactiveReason = isActive ? null : reason?.Trim();
         await _authDb.SaveChangesAsync();
 
         var log = new AuditLog
         {
             AdminUserId = adminUserId,
             Action = isActive ? "USER_ACTIVATED" : "USER_DEACTIVATED",
-            Notes = $"UserId: {userId}"
+            Notes = isActive
+                ? $"UserId: {userId}"
+                : $"UserId: {userId}, Reason: {user.InactiveReason}"
         };
         _rewardsDb.AuditLogs.Add(log);
         await _rewardsDb.SaveChangesAsync();
+
+        await _publishEndpoint.Publish(new UserStatusChangedEvent(
+            user.UserId,
+            user.Email,
+            user.FullName,
+            user.IsActive,
+            user.InactiveReason,
+            DateTime.UtcNow));
 
         return ApiResponse<string>.Ok($"User {(isActive ? "activated" : "deactivated")} successfully.");
     }
@@ -286,5 +319,234 @@ public class AdminService : IAdminService
 
         await _rewardsDb.SaveChangesAsync();
         return ApiResponse<Campaign>.Ok(campaign);
+    }
+
+    public async Task<ApiResponse<List<Campaign>>> GetCampaignsAsync()
+    {
+        var campaigns = await _rewardsDb.Campaigns
+            .OrderByDescending(c => c.StartDate)
+            .ThenByDescending(c => c.CreatedAt)
+            .ToListAsync();
+
+        return ApiResponse<List<Campaign>>.Ok(campaigns);
+    }
+
+    public async Task<ApiResponse<string>> DeactivateCampaignAsync(Guid campaignId, Guid adminUserId)
+    {
+        var campaign = await _rewardsDb.Campaigns.FirstOrDefaultAsync(c => c.CampaignId == campaignId);
+        if (campaign == null)
+        {
+            return ApiResponse<string>.Fail("Campaign not found.");
+        }
+
+        if (!campaign.IsActive)
+        {
+            return ApiResponse<string>.Ok("Campaign is already inactive.");
+        }
+
+        campaign.IsActive = false;
+
+        _rewardsDb.AuditLogs.Add(new AuditLog
+        {
+            AdminUserId = adminUserId,
+            Action = "CAMPAIGN_DEACTIVATED",
+            Notes = $"CampaignId: {campaign.CampaignId}, Name: {campaign.Name}"
+        });
+
+        await _rewardsDb.SaveChangesAsync();
+        return ApiResponse<string>.Ok("Campaign deactivated successfully.");
+    }
+
+    public async Task<ApiResponse<string>> ActivateCampaignAsync(Guid campaignId, Guid adminUserId)
+    {
+        var campaign = await _rewardsDb.Campaigns.FirstOrDefaultAsync(c => c.CampaignId == campaignId);
+        if (campaign == null)
+        {
+            return ApiResponse<string>.Fail("Campaign not found.");
+        }
+
+        if (campaign.IsActive)
+        {
+            return ApiResponse<string>.Ok("Campaign is already active.");
+        }
+
+        campaign.IsActive = true;
+
+        _rewardsDb.AuditLogs.Add(new AuditLog
+        {
+            AdminUserId = adminUserId,
+            Action = "CAMPAIGN_ACTIVATED",
+            Notes = $"CampaignId: {campaign.CampaignId}, Name: {campaign.Name}"
+        });
+
+        await _rewardsDb.SaveChangesAsync();
+        return ApiResponse<string>.Ok("Campaign activated successfully.");
+    }
+
+    public async Task<ApiResponse<string>> RemoveCampaignAsync(Guid campaignId, Guid adminUserId)
+    {
+        var campaign = await _rewardsDb.Campaigns.FirstOrDefaultAsync(c => c.CampaignId == campaignId);
+        if (campaign == null)
+        {
+            return ApiResponse<string>.Fail("Campaign not found.");
+        }
+
+        _rewardsDb.Campaigns.Remove(campaign);
+        _rewardsDb.AuditLogs.Add(new AuditLog
+        {
+            AdminUserId = adminUserId,
+            Action = "CAMPAIGN_REMOVED",
+            Notes = $"CampaignId: {campaign.CampaignId}, Name: {campaign.Name}"
+        });
+
+        await _rewardsDb.SaveChangesAsync();
+        return ApiResponse<string>.Ok("Campaign removed successfully.");
+    }
+
+    public async Task<ApiResponse<object>> CreateRewardAsync(CreateRewardDto dto, Guid adminUserId)
+    {
+        // Map points to validity window (1 to 4 months)
+        var expiryMonths = dto.PointsCost <= 300 ? 1
+            : dto.PointsCost <= 1000 ? 2
+            : dto.PointsCost <= 3000 ? 3
+            : 4;
+
+        var createdAt = DateTime.UtcNow;
+        var reward = new RewardCatalogItemView
+        {
+            ItemId = Guid.NewGuid(),
+            Name = dto.Name.Trim(),
+            Description = dto.Description,
+            ItemType = dto.ItemType,
+            PointsCost = dto.PointsCost,
+            Stock = dto.Stock,
+            IsActive = true,
+            CreatedAt = createdAt,
+            ExpiresAt = createdAt.AddMonths(expiryMonths)
+        };
+
+        _rewardsDb.CatalogItems.Add(reward);
+        _rewardsDb.AuditLogs.Add(new AuditLog
+        {
+            AdminUserId = adminUserId,
+            Action = "REWARD_CREATED",
+            Notes = $"ItemId: {reward.ItemId}, Name: {reward.Name}, PointsCost: {reward.PointsCost}, ExpiresAt: {reward.ExpiresAt:O}"
+        });
+
+        await _rewardsDb.SaveChangesAsync();
+        return ApiResponse<object>.Ok(new
+        {
+            reward.ItemId,
+            reward.Name,
+            reward.Description,
+            reward.ItemType,
+            reward.PointsCost,
+            reward.Stock,
+            reward.IsActive,
+            reward.ExpiresAt,
+            reward.CreatedAt
+        }, "Reward created successfully.");
+    }
+
+    public async Task<ApiResponse<List<object>>> GetRewardsAsync()
+    {
+        var rewards = await _rewardsDb.CatalogItems
+            .OrderByDescending(r => r.CreatedAt)
+            .ToListAsync();
+
+        var hasMissingExpiry = false;
+        foreach (var reward in rewards)
+        {
+            if (reward.ExpiresAt != null) continue;
+            reward.ExpiresAt = reward.CreatedAt.AddMonths(GetRewardExpiryMonths(reward.PointsCost));
+            hasMissingExpiry = true;
+        }
+
+        if (hasMissingExpiry)
+        {
+            await _rewardsDb.SaveChangesAsync();
+        }
+
+        var data = rewards.Select(r => (object)new
+        {
+            r.ItemId,
+            r.Name,
+            r.Description,
+            r.ItemType,
+            r.PointsCost,
+            r.Stock,
+            r.IsActive,
+            r.ExpiresAt,
+            r.CreatedAt
+        }).ToList();
+
+        return ApiResponse<List<object>>.Ok(data);
+    }
+
+    public async Task<ApiResponse<string>> DeactivateRewardAsync(Guid rewardId, Guid adminUserId)
+    {
+        var reward = await _rewardsDb.CatalogItems.FirstOrDefaultAsync(r => r.ItemId == rewardId);
+        if (reward == null)
+        {
+            return ApiResponse<string>.Fail("Reward not found.");
+        }
+
+        if (!reward.IsActive)
+        {
+            return ApiResponse<string>.Ok("Reward already inactive.");
+        }
+
+        reward.IsActive = false;
+        _rewardsDb.AuditLogs.Add(new AuditLog
+        {
+            AdminUserId = adminUserId,
+            Action = "REWARD_DEACTIVATED",
+            Notes = $"RewardId: {reward.ItemId}, Name: {reward.Name}"
+        });
+        await _rewardsDb.SaveChangesAsync();
+        return ApiResponse<string>.Ok("Reward deactivated successfully.");
+    }
+
+    public async Task<ApiResponse<string>> ActivateRewardAsync(Guid rewardId, Guid adminUserId)
+    {
+        var reward = await _rewardsDb.CatalogItems.FirstOrDefaultAsync(r => r.ItemId == rewardId);
+        if (reward == null)
+        {
+            return ApiResponse<string>.Fail("Reward not found.");
+        }
+
+        if (reward.IsActive)
+        {
+            return ApiResponse<string>.Ok("Reward already active.");
+        }
+
+        reward.IsActive = true;
+        _rewardsDb.AuditLogs.Add(new AuditLog
+        {
+            AdminUserId = adminUserId,
+            Action = "REWARD_ACTIVATED",
+            Notes = $"RewardId: {reward.ItemId}, Name: {reward.Name}"
+        });
+        await _rewardsDb.SaveChangesAsync();
+        return ApiResponse<string>.Ok("Reward activated successfully.");
+    }
+
+    public async Task<ApiResponse<string>> RemoveRewardAsync(Guid rewardId, Guid adminUserId)
+    {
+        var reward = await _rewardsDb.CatalogItems.FirstOrDefaultAsync(r => r.ItemId == rewardId);
+        if (reward == null)
+        {
+            return ApiResponse<string>.Fail("Reward not found.");
+        }
+
+        _rewardsDb.CatalogItems.Remove(reward);
+        _rewardsDb.AuditLogs.Add(new AuditLog
+        {
+            AdminUserId = adminUserId,
+            Action = "REWARD_REMOVED",
+            Notes = $"RewardId: {reward.ItemId}, Name: {reward.Name}"
+        });
+        await _rewardsDb.SaveChangesAsync();
+        return ApiResponse<string>.Ok("Reward removed successfully.");
     }
 }

@@ -1,6 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy, ChangeDetectorRef, DestroyRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators, AbstractControl } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { WalletService } from '../../core/services/wallet.service';
 import { ToastService } from '../../core/services/toast.service';
 
@@ -14,6 +15,7 @@ function dateRangeValidator(group: AbstractControl) {
 @Component({
   selector: 'app-statement',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, ReactiveFormsModule],
   template: `
     <div class="max-w-lg mx-auto space-y-6 page-enter">
@@ -38,6 +40,9 @@ function dateRangeValidator(group: AbstractControl) {
           </div>
           @if (form.errors?.['dateRange'] && form.get('to')?.touched) {
             <p class="text-brand-red text-xs -mt-2">End date must be on or after start date.</p>
+          }
+          @if (error) {
+            <p class="text-brand-red text-xs -mt-1">{{ error }}</p>
           }
 
           <!-- Quick range presets -->
@@ -103,6 +108,7 @@ function dateRangeValidator(group: AbstractControl) {
 export class StatementComponent {
   loading: 'pdf' | 'csv' | null = null;
   activePreset = 'Last 30 days';
+  error = '';
 
   presets = [
     { label: 'Last 7 days', days: 7 },
@@ -119,7 +125,8 @@ export class StatementComponent {
   constructor(
     private fb: FormBuilder,
     private walletSvc: WalletService,
-    private toast: ToastService
+    private toast: ToastService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   private today(): string {
@@ -135,17 +142,21 @@ export class StatementComponent {
   applyPreset(preset: { label: string; days: number }): void {
     this.activePreset = preset.label;
     this.form.patchValue({ from: this.defaultFrom(preset.days), to: this.today() });
+    this.error = '';
+    this.cdr.markForCheck();
   }
 
   download(type: 'pdf' | 'csv'): void {
     if (this.form.invalid) return;
     const { from, to } = this.form.value;
     this.loading = type;
+    this.error = '';
+    this.cdr.markForCheck();
     const obs = type === 'pdf'
       ? this.walletSvc.getStatementPdf(from!, to!)
       : this.walletSvc.getStatementCsv(from!, to!);
 
-    obs.subscribe({
+    obs.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: blob => {
         this.loading = null;
         const url = URL.createObjectURL(blob);
@@ -155,8 +166,16 @@ export class StatementComponent {
         a.click();
         URL.revokeObjectURL(url);
         this.toast.success(`Statement downloaded as ${type.toUpperCase()}`);
+        this.cdr.markForCheck();
       },
-      error: () => { this.loading = null; }
+      error: () => {
+        this.loading = null;
+        this.error = 'Could not download statement. Please try again.';
+        this.cdr.markForCheck();
+      }
     });
   }
 }
+
+
+  private readonly destroyRef = inject(DestroyRef);

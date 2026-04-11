@@ -32,6 +32,9 @@ public class User
 
     public bool IsActive { get; set; } = true;
 
+    [MaxLength(500)]
+    public string? InactiveReason { get; set; }
+
     [Required]
     [MaxLength(50)]
     public string KycStatus { get; set; } = "Pending";

@@ -18,8 +18,8 @@ public class UserRegisteredConsumer : IConsumer<UserRegisteredEvent>
         await _notificationService.CreateAsync(
             context.Message.UserId,
             "Account",
-            "Account created",
-            $"Welcome {context.Message.FullName}! Your LoyalPay account has been created successfully.",
+            "Account successfully created",
+            "Your LoyalPay account has been created successfully. Registered account details: user profile activated, wallet provisioning enabled, and rewards enrollment initialized.",
             DateTime.UtcNow,
             context.Message.Email,
             context.Message.FullName);

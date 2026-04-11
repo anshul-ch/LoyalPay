@@ -3,8 +3,16 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
-  AdminDashboardDto, UserView, PagedUsersResult, KycSubmissionView, CampaignDto, KycRejectDto, ApiResponse
+  AdminDashboardDto, UserView, PagedUsersResult, KycSubmissionView, CampaignDto, KycRejectDto, UpdateUserStatusDto, ApiResponse, AdminRewardDto
 } from '../models/api.models';
+
+export interface CreateRewardDto {
+  name: string;
+  description?: string;
+  itemType: 'Cashback' | 'Coupon' | 'Voucher';
+  pointsCost: number;
+  stock: number;
+}
 
 @Injectable({ providedIn: 'root' })
 export class AdminService {
@@ -25,8 +33,8 @@ export class AdminService {
     return this.http.get<ApiResponse<PagedUsersResult>>(`${this.api}/admin/users`, { params });
   }
 
-  updateUserStatus(userId: string, isActive: boolean): Observable<ApiResponse<string>> {
-    return this.http.patch<ApiResponse<string>>(`${this.api}/admin/users/${userId}/status`, { isActive });
+  updateUserStatus(userId: string, dto: UpdateUserStatusDto): Observable<ApiResponse<string>> {
+    return this.http.patch<ApiResponse<string>>(`${this.api}/admin/users/${userId}/status`, dto);
   }
 
   getPendingKyc(): Observable<ApiResponse<KycSubmissionView[]>> {
@@ -51,5 +59,41 @@ export class AdminService {
 
   createCampaign(dto: CampaignDto): Observable<ApiResponse<object>> {
     return this.http.post<ApiResponse<object>>(`${this.api}/admin/campaigns`, dto);
+  }
+
+  getCampaigns(): Observable<ApiResponse<CampaignDto[]>> {
+    return this.http.get<ApiResponse<CampaignDto[]>>(`${this.api}/admin/campaigns`);
+  }
+
+  deactivateCampaign(campaignId: string): Observable<ApiResponse<string>> {
+    return this.http.patch<ApiResponse<string>>(`${this.api}/admin/campaigns/${campaignId}/deactivate`, {});
+  }
+
+  activateCampaign(campaignId: string): Observable<ApiResponse<string>> {
+    return this.http.patch<ApiResponse<string>>(`${this.api}/admin/campaigns/${campaignId}/activate`, {});
+  }
+
+  removeCampaign(campaignId: string): Observable<ApiResponse<string>> {
+    return this.http.delete<ApiResponse<string>>(`${this.api}/admin/campaigns/${campaignId}`);
+  }
+
+  createReward(dto: CreateRewardDto): Observable<ApiResponse<object>> {
+    return this.http.post<ApiResponse<object>>(`${this.api}/admin/campaigns/rewards`, dto);
+  }
+
+  getRewards(): Observable<ApiResponse<AdminRewardDto[]>> {
+    return this.http.get<ApiResponse<AdminRewardDto[]>>(`${this.api}/admin/campaigns/rewards`);
+  }
+
+  deactivateReward(rewardId: string): Observable<ApiResponse<string>> {
+    return this.http.patch<ApiResponse<string>>(`${this.api}/admin/campaigns/rewards/${rewardId}/deactivate`, {});
+  }
+
+  activateReward(rewardId: string): Observable<ApiResponse<string>> {
+    return this.http.patch<ApiResponse<string>>(`${this.api}/admin/campaigns/rewards/${rewardId}/activate`, {});
+  }
+
+  removeReward(rewardId: string): Observable<ApiResponse<string>> {
+    return this.http.delete<ApiResponse<string>>(`${this.api}/admin/campaigns/rewards/${rewardId}`);
   }
 }

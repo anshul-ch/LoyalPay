@@ -8,4 +8,5 @@ public class CatalogItemDto
     public string ItemType { get; set; } = string.Empty;
     public int PointsCost { get; set; }
     public bool IsActive { get; set; }
+    public DateTime? ExpiresAt { get; set; }
 }

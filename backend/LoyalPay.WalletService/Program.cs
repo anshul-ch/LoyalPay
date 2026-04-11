@@ -17,6 +17,9 @@ builder.Configuration.AddEnvironmentVariables();
 var connectionString = builder.Configuration["WALLET_DB"]
     ?? builder.Configuration.GetConnectionString("WalletDb")
     ?? string.Empty;
+var authConnectionString = builder.Configuration["AUTH_DB"]
+    ?? builder.Configuration.GetConnectionString("AuthDb")
+    ?? string.Empty;
 
 var jwtSecret   = builder.Configuration["JWT_SECRET"]    ?? builder.Configuration["JwtSettings:Secret"]   ?? string.Empty;
 var jwtIssuer   = builder.Configuration["JWT_ISSUER"]    ?? builder.Configuration["JwtSettings:Issuer"]   ?? string.Empty;
@@ -36,6 +39,7 @@ builder.Services.AddLoyalPayCors();
 // DbContext
 
 builder.Services.AddDbContext<WalletDbContext>(o => o.UseSqlServer(connectionString));
+builder.Services.AddDbContext<AuthReadDbContext>(o => o.UseSqlServer(authConnectionString));
 
 // Services
 
@@ -43,6 +47,7 @@ builder.Services.AddScoped<IWalletAccountRepository, WalletAccountRepository>();
 builder.Services.AddScoped<ILedgerEntryRepository, LedgerEntryRepository>();
 builder.Services.AddScoped<ITopUpRequestRepository, TopUpRequestRepository>();
 builder.Services.AddScoped<ITransferRequestRepository, TransferRequestRepository>();
+builder.Services.AddScoped<IUserVerificationRepository, UserVerificationRepository>();
 builder.Services.AddScoped<IWalletService, WalletService>();
 builder.Services.AddScoped<IStatementService, StatementService>();
 

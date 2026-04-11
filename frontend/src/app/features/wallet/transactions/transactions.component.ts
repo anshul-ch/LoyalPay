@@ -1,5 +1,6 @@
-import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, DestroyRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { WalletService } from '../../../core/services/wallet.service';
 import { CurrencyInrPipe } from '../../../shared/pipes/currency-inr.pipe';
 import { TransactionDto } from '../../../core/models/api.models';
@@ -22,6 +23,9 @@ import { TransactionDto } from '../../../core/models/api.models';
       </div>
 
       <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        @if (loadError && transactions.length === 0) {
+          <div class="p-4 text-sm text-red-700 bg-red-50 border-b border-red-100">{{ loadError }}</div>
+        }
         @if (loading && transactions.length === 0) {
           <div class="divide-y divide-gray-50">
             @for (i of [1,2,3,4,5,6,7,8]; track i) {
@@ -108,6 +112,8 @@ export class TransactionsComponent implements OnInit {
   size = 20;
   hasMore = false;
   loading = false;
+  loadError = '';
+  private readonly destroyRef = inject(DestroyRef);
 
   constructor(private walletSvc: WalletService, private cdr: ChangeDetectorRef) {}
 
@@ -115,8 +121,9 @@ export class TransactionsComponent implements OnInit {
 
   load(page: number): void {
     this.loading = true;
+    this.loadError = '';
     this.cdr.markForCheck();
-    this.walletSvc.getTransactions(page, this.size).subscribe({
+    this.walletSvc.getTransactions(page, this.size).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: res => {
         const items = res.data?.items ?? [];
         const existing = new Set(this.transactions.map(t => t.entryId));
@@ -127,7 +134,11 @@ export class TransactionsComponent implements OnInit {
         this.loading = false;
         this.cdr.markForCheck();
       },
-      error: () => { this.loading = false; this.cdr.markForCheck(); }
+      error: () => {
+        this.loading = false;
+        this.loadError = 'Unable to load transactions.';
+        this.cdr.markForCheck();
+      }
     });
   }
 

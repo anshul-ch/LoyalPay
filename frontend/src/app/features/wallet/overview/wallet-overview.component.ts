@@ -1,7 +1,9 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit } from '@angular/core';
+﻿import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, DestroyRef, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { WalletService } from '../../../core/services/wallet.service';
+import { ProfileService } from '../../../core/services/profile.service';
 import { BalanceCardComponent } from '../balance-card/balance-card.component';
 import { BalanceDto, TransactionDto } from '../../../core/models/api.models';
 import { CurrencyInrPipe } from '../../../shared/pipes/currency-inr.pipe';
@@ -47,12 +49,12 @@ import { CurrencyInrPipe } from '../../../shared/pipes/currency-inr.pipe';
                 <span class="text-sm font-bold">Top Up</span>
               </a>
               
-              <a routerLink="/wallet/transfer"
-                class="flex flex-col items-center justify-center gap-3 p-4 rounded-2xl bg-white border border-gray-100 text-gray-700 hover:bg-gray-50 hover:shadow-sm hover:border-gray-200 hover:scale-[1.03] transition-all group">
+              <a [routerLink]="kycApproved ? '/wallet/transfer' : '/profile/kyc'"
+                class="flex flex-col items-center justify-center gap-3 p-4 rounded-2xl bg-gradient-to-br from-brand-orange to-red-500 text-white shadow-lg shadow-brand-orange/25 hover:scale-[1.03] transition-all group ring-2 ring-orange-200/40">
                 <svg class="w-6 h-6 text-brand-navy group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
                 </svg>
-                <span class="text-sm font-bold text-gray-900">Transfer</span>
+                <span class="text-sm font-black">Pay</span>
               </a>
             </div>
           </div>
@@ -99,7 +101,7 @@ import { CurrencyInrPipe } from '../../../shared/pipes/currency-inr.pipe';
                       </div>
                       <div>
                         <p class="text-[15px] font-bold text-gray-900 group-hover:text-brand-navy transition">{{ tx.description || tx.entryType }}</p>
-                        <p class="text-xs font-medium text-gray-400 mt-0.5">{{ tx.createdAt | date:'MMM dd, yyyy • hh:mm a' }}</p>
+                        <p class="text-xs font-medium text-gray-400 mt-0.5">{{ tx.createdAt | date:'MMM dd, yyyy · hh:mm a' }}</p>
                       </div>
                     </div>
                     <div class="text-right">
@@ -134,20 +136,43 @@ export class WalletOverviewComponent implements OnInit {
   transactions: TransactionDto[] = [];
   loading = false;
   loadingBalance = true;
+  kycApproved = false;
 
-  constructor(private walletSvc: WalletService, private cdr: ChangeDetectorRef) {}
+  private readonly destroyRef = inject(DestroyRef);
+
+  constructor(
+    private walletSvc: WalletService,
+    private profileSvc: ProfileService,
+    private cdr: ChangeDetectorRef
+  ) {}
 
   ngOnInit(): void {
     this.loading = true;
 
-    this.walletSvc.getBalance().subscribe({
+    this.profileSvc.getKycStatus().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: r => {
+        this.kycApproved = (r.data?.status ?? '').toLowerCase() === 'approved';
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.kycApproved = false;
+        this.cdr.markForCheck();
+      }
+    });
+
+    this.walletSvc.getBalance().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: r => { this.balance = r.data ?? null; this.loadingBalance = false; this.cdr.markForCheck(); },
       error: () => { this.loadingBalance = false; this.cdr.markForCheck(); }
     });
 
-    this.walletSvc.getTransactions(1, 6).subscribe({
+    this.walletSvc.getTransactions(1, 6).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: r => { this.transactions = r.data?.items ?? []; this.loading = false; this.cdr.markForCheck(); },
       error: () => { this.loading = false; this.cdr.markForCheck(); }
     });
   }
 }
+
+
+
+
+

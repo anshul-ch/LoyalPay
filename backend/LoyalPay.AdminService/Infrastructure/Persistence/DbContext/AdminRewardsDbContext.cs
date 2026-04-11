@@ -11,6 +11,7 @@ public class AdminRewardsDbContext : Microsoft.EntityFrameworkCore.DbContext
     }
 
     public DbSet<RewardView> RewardAccounts { get; set; }
+    public DbSet<RewardCatalogItemView> CatalogItems { get; set; }
     public DbSet<Campaign> Campaigns { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
 
@@ -18,6 +19,9 @@ public class AdminRewardsDbContext : Microsoft.EntityFrameworkCore.DbContext
     {
         modelBuilder.Entity<RewardView>()
             .ToTable("RewardAccounts", t => t.ExcludeFromMigrations());
+
+        modelBuilder.Entity<RewardCatalogItemView>()
+            .ToTable("CatalogItems", t => t.ExcludeFromMigrations());
 
         modelBuilder.Entity<Campaign>()
             .Property(c => c.CampaignId)

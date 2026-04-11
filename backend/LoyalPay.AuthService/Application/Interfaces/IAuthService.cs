@@ -11,7 +11,7 @@ public interface IAuthService
     /// </summary>
     Task<ApiResponse<TokenDto>> SignupAsync(SignupDto dto);
 
-    Task<ApiResponse<TokenDto>> LoginAsync(LoginDto dto);
+    Task<ApiResponse<TokenDto>> LoginAsync(LoginDto dto, string? userAgent = null);
 
     /// <summary>
     /// Revokes the current refresh token before issuing a replacement token pair.

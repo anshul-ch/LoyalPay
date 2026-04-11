@@ -60,6 +60,8 @@ export interface ProfileDto {
   fullName: string;
   phone: string;
   role: string;
+  isActive: boolean;
+  inactiveReason?: string;
   kycStatus: string;
   kycDocumentType?: string;
   kycDocumentNumber?: string;
@@ -72,6 +74,8 @@ export interface LookupDto {
   userId: string;
   fullName: string;
   email: string;
+  kycStatus?: string;
+  isActive?: boolean;
 }
 
 // Wallet
@@ -127,6 +131,7 @@ export interface CatalogItemDto {
   itemType: string;
   pointsCost: number;
   isActive: boolean;
+  expiresAt?: string;
 }
 
 export interface RedeemDto {
@@ -158,6 +163,7 @@ export interface UserView {
   fullName: string;
   role: string;
   isActive: boolean;
+  inactiveReason?: string;
   kycStatus: string;
   kycDocumentType?: string;
   kycDocumentNumber?: string;
@@ -193,11 +199,31 @@ export interface KycSubmissionView {
 }
 
 export interface CampaignDto {
+  campaignId?: string;
   name: string;
   description?: string;
   bonusPoints: number;
   startDate: string;
   endDate: string;
+  isActive?: boolean;
+  createdAt?: string;
+}
+
+export interface AdminRewardDto {
+  itemId: string;
+  name: string;
+  description?: string;
+  itemType: string;
+  pointsCost: number;
+  stock: number;
+  isActive: boolean;
+  expiresAt?: string;
+  createdAt?: string;
+}
+
+export interface UpdateUserStatusDto {
+  isActive: boolean;
+  reason?: string;
 }
 
 export interface KycRejectDto {

@@ -8,7 +8,7 @@ let isRefreshing = false;
 const refreshTokenSubject = new BehaviorSubject<string | null>(null);
 
 export const tokenRefreshInterceptor: HttpInterceptorFn = (req, next) => {
-  const auth = inject(AuthService);
+  const auth   = inject(AuthService);
   const router = inject(Router);
 
   return next(req).pipe(
@@ -33,7 +33,6 @@ export const tokenRefreshInterceptor: HttpInterceptorFn = (req, next) => {
               router.navigate(['/login']);
               return throwError(() => error);
             }
-
             return next(req.clone({ setHeaders: { Authorization: `Bearer ${token}` } }));
           })
         );

@@ -15,22 +15,37 @@ public class TransferCompletedConsumer : IConsumer<TransferCompletedEvent>
 
     public async Task Consume(ConsumeContext<TransferCompletedEvent> context)
     {
-        var noteSuffix = string.IsNullOrWhiteSpace(context.Message.Note)
-            ? string.Empty
-            : $" Note: {context.Message.Note}";
+        var msg = context.Message;
+        var senderLabel = string.IsNullOrWhiteSpace(msg.SenderName) ? "—" : msg.SenderName;
+        var receiverLabel = string.IsNullOrWhiteSpace(msg.ReceiverName) ? "—" : msg.ReceiverName;
+        var noteRow = string.IsNullOrWhiteSpace(msg.Note) ? "" : $"\n||Note:{msg.Note}";
+
+        var senderBody = $"A debit of INR {msg.Amount:0.00} has been processed from your wallet."
+            + $"\n||Amount:INR {msg.Amount:0.00}"
+            + $"\n||To:{receiverLabel}"
+            + $"\n||Reference:{msg.TransferId}"
+            + $"\n||Date:{DateTime.UtcNow:dd MMM yyyy, HH:mm:ss} UTC"
+            + noteRow;
+
+        var receiverBody = $"A credit of INR {msg.Amount:0.00} has been posted to your wallet."
+            + $"\n||Amount:INR {msg.Amount:0.00}"
+            + $"\n||From:{senderLabel}"
+            + $"\n||Reference:{msg.TransferId}"
+            + $"\n||Date:{DateTime.UtcNow:dd MMM yyyy, HH:mm:ss} UTC"
+            + noteRow;
 
         await _notificationService.CreateAsync(
-            context.Message.SenderUserId,
+            msg.SenderUserId,
             "Transaction",
             "Transfer sent",
-            $"You sent INR {context.Message.Amount:0.00} to another wallet.{noteSuffix}",
+            senderBody,
             DateTime.UtcNow);
 
         await _notificationService.CreateAsync(
-            context.Message.ReceiverUserId,
+            msg.ReceiverUserId,
             "Transaction",
             "Transfer received",
-            $"You received INR {context.Message.Amount:0.00} from another wallet.{noteSuffix}",
+            receiverBody,
             DateTime.UtcNow);
     }
 }

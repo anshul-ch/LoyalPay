@@ -25,6 +25,9 @@ public class UserView
 
     public bool IsActive { get; set; }
 
+    [MaxLength(500)]
+    public string? InactiveReason { get; set; }
+
     [MaxLength(50)]
     public string KycStatus { get; set; } = "Pending";
 

@@ -1,4 +1,5 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, DestroyRef, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { WalletService } from '../../../core/services/wallet.service';
@@ -10,6 +11,7 @@ import { ProfileService } from '../../../core/services/profile.service';
 @Component({
   selector: 'app-topup',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, ReactiveFormsModule, BalanceCardComponent],
   template: `
     <div class="max-w-lg mx-auto space-y-6 page-enter">
@@ -32,18 +34,18 @@ import { ProfileService } from '../../../core/services/profile.service';
                   [class]="f['amount'].value === amt
                     ? 'border-brand-orange bg-brand-orange-light text-brand-orange'
                     : 'border-gray-200 text-gray-600 hover:border-brand-orange hover:text-brand-orange'">
-                  ₹{{ amt | number }}
+                  INR {{ amt | number }}
                 </button>
               }
             </div>
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Custom Amount (₹)</label>
-            <input formControlName="amount" type="number" placeholder="Enter amount (1 – 50,000)"
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Custom Amount (INR)</label>
+            <input formControlName="amount" type="number" placeholder="Enter amount (1 - 50,000)"
               class="input" [class.input-error]="f['amount'].invalid && f['amount'].touched">
             @if (f['amount'].invalid && f['amount'].touched) {
-              <p class="text-brand-red text-xs mt-1">Amount must be between ₹1 and ₹50,000.</p>
+              <p class="text-brand-red text-xs mt-1">Amount must be between INR 1 and INR 50,000.</p>
             }
           </div>
 
@@ -99,9 +101,9 @@ export class TopUpComponent implements OnInit {
   topUpWarning = '';
   quickAmounts = [500, 1000, 2000, 5000];
   methods = [
-    { value: 'UPI', label: 'UPI', icon: '📱' },
-    { value: 'Card', label: 'Card', icon: '💳' },
-    { value: 'NetBanking', label: 'Net Banking', icon: '🏦' }
+    { value: 'UPI', label: 'UPI', icon: 'U' },
+    { value: 'Card', label: 'Card', icon: 'C' },
+    { value: 'NetBanking', label: 'Net Banking', icon: 'N' }
   ];
 
   form = this.fb.group({
@@ -111,21 +113,31 @@ export class TopUpComponent implements OnInit {
 
   get f() { return this.form.controls; }
 
+  private readonly destroyRef = inject(DestroyRef);
+
   constructor(
     private fb: FormBuilder,
     private walletSvc: WalletService,
     private profileSvc: ProfileService,
-    private toast: ToastService
+    private toast: ToastService,
+    private cdr: ChangeDetectorRef
   ) {
-    this.profileSvc.getKycStatus().subscribe(r => this.kycStatus = r.data?.status ?? null);
+    this.profileSvc.getKycStatus().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(r => {
+      this.kycStatus = (r.data as any)?.status ?? (r.data as any)?.Status ?? null;
+      this.cdr.markForCheck();
+    });
   }
 
   ngOnInit(): void {
-    this.walletSvc.getBalance().subscribe(r => this.balance = r.data ?? null);
+    this.walletSvc.getBalance().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(r => {
+      this.balance = r.data ?? null;
+      this.cdr.markForCheck();
+    });
   }
 
   setAmount(amt: number): void {
     this.form.patchValue({ amount: amt });
+    this.cdr.markForCheck();
   }
 
   submit(): void {
@@ -133,37 +145,52 @@ export class TopUpComponent implements OnInit {
     this.loading = true;
     this.topUpWarning = '';
 
-    this.walletSvc.startTopUp(this.form.value as any).subscribe({
+    this.walletSvc.startTopUp(this.form.value as any).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: res => {
         if (!res.success || !res.data?.topUpId) {
           this.loading = false;
           this.topUpWarning = res.message || 'Top-up could not be started.';
+          this.cdr.markForCheck();
           return;
         }
 
         const topUpId = res.data.topUpId;
-        this.walletSvc.finishTopUp(topUpId, true).subscribe({
+        this.walletSvc.finishTopUp(topUpId, true).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
           next: finishRes => {
             this.loading = false;
             if (!finishRes.success) {
               this.topUpWarning = finishRes.message || 'Top-up failed to complete.';
+              this.cdr.markForCheck();
               return;
             }
 
             this.toast.success('Top-up successful!');
-            this.walletSvc.getBalance().subscribe(r => this.balance = r.data ?? null);
+            this.walletSvc.getBalance().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(r => {
+              this.balance = r.data ?? null;
+              this.cdr.markForCheck();
+            });
             this.form.reset({ paymentMethod: 'UPI' });
+            this.cdr.markForCheck();
           },
           error: () => {
             this.loading = false;
             this.topUpWarning = 'Top-up verification failed.';
+            this.cdr.markForCheck();
           }
         });
       },
       error: () => {
         this.loading = false;
         this.topUpWarning = 'Unable to start payment request.';
+        this.cdr.markForCheck();
       }
     });
   }
 }
+
+
+
+
+
+
+

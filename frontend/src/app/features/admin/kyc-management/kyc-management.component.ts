@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AdminService } from '../../../core/services/admin.service';
 import { ToastService } from '../../../core/services/toast.service';
@@ -8,6 +8,7 @@ import { KycSubmissionView } from '../../../core/models/api.models';
 @Component({
   selector: 'app-kyc-management',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, ConfirmDialogComponent],
   template: `
     <div class="space-y-5 page-enter">
@@ -51,6 +52,9 @@ import { KycSubmissionView } from '../../../core/models/api.models';
           }
         </div>
       } @else {
+        @if (loadError) {
+          <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">{{ loadError }}</div>
+        }
         <div class="space-y-4">
           @for (sub of submissions; track sub.submissionId) {
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -192,7 +196,7 @@ import { KycSubmissionView } from '../../../core/models/api.models';
     </app-confirm-dialog>
   `
 })
-export class KycManagementComponent implements OnInit {
+export class KycManagementComponent implements OnInit, OnDestroy {
   submissions: KycSubmissionView[] = [];
   documentUrls: Record<string, string> = {};
   documentTypes: Record<string, string> = {};
@@ -201,6 +205,7 @@ export class KycManagementComponent implements OnInit {
   selected: KycSubmissionView | null = null;
   showApprove = false;
   showReject = false;
+  loadError = '';
 
   get approveMessage(): string {
     if (!this.selected) return '';
@@ -212,16 +217,26 @@ export class KycManagementComponent implements OnInit {
     return `Reject ${this.selected.documentType} for ${this.getUserName(this.selected.userId)}. Provide a reason (optional):`;
   }
 
-  constructor(private adminSvc: AdminService, private toast: ToastService) {}
+  constructor(private adminSvc: AdminService, private toast: ToastService, private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
     this.adminSvc.getPendingKyc().subscribe({
       next: kyc => {
         this.submissions = kyc.data ?? [];
         this.loading = false;
+        this.loadError = '';
+        this.cdr.markForCheck();
       },
-      error: () => { this.loading = false; }
+      error: () => {
+        this.loading = false;
+        this.loadError = 'Unable to load pending KYC submissions.';
+        this.cdr.markForCheck();
+      }
     });
+  }
+
+  ngOnDestroy(): void {
+    Object.values(this.documentUrls).forEach(url => URL.revokeObjectURL(url));
   }
 
   getUserName(userId: string): string {
@@ -250,8 +265,13 @@ export class KycManagementComponent implements OnInit {
         }
         this.documentTypes[sub.submissionId] = blob.type || sub.contentType || 'application/octet-stream';
         this.documentUrls[sub.submissionId] = URL.createObjectURL(blob);
+        this.cdr.markForCheck();
       },
-      error: () => { this.loadingDoc = null; }
+      error: () => {
+        this.loadingDoc = null;
+        this.toast.error('Unable to load document preview.');
+        this.cdr.markForCheck();
+      }
     });
   }
 
@@ -268,6 +288,11 @@ export class KycManagementComponent implements OnInit {
         this.toast.success(`KYC approved for ${name}.`);
         this.submissions = this.submissions.filter(s => s.submissionId !== id);
         this.selected = null;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.toast.error('Unable to approve KYC at the moment.');
+        this.cdr.markForCheck();
       }
     });
   }
@@ -282,7 +307,14 @@ export class KycManagementComponent implements OnInit {
         this.toast.success(`KYC rejected for ${name}.`);
         this.submissions = this.submissions.filter(s => s.submissionId !== id);
         this.selected = null;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.toast.error('Unable to reject KYC at the moment.');
+        this.cdr.markForCheck();
       }
     });
   }
 }
+
+

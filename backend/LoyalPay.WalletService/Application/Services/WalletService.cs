@@ -14,16 +14,19 @@ public class WalletService : IWalletService
     private readonly ITopUpRequestRepository _topUpRepository;
     private readonly ITransferRequestRepository _transferRepository;
     private readonly ILedgerEntryRepository _ledgerRepository;
+    private readonly IUserVerificationRepository _userVerificationRepository;
     private readonly IPublishEndpoint _publishEndpoint;
 
     public WalletService(IWalletAccountRepository walletRepository, ITopUpRequestRepository topUpRepository,
         ITransferRequestRepository transferRepository, ILedgerEntryRepository ledgerRepository,
+        IUserVerificationRepository userVerificationRepository,
         IPublishEndpoint publishEndpoint)
     {
         _walletRepository = walletRepository;
         _topUpRepository = topUpRepository;
         _transferRepository = transferRepository;
         _ledgerRepository = ledgerRepository;
+        _userVerificationRepository = userVerificationRepository;
         _publishEndpoint = publishEndpoint;
     }
 
@@ -188,9 +191,21 @@ public class WalletService : IWalletService
             await _walletRepository.SaveChangesAsync();
         }
 
-        if (senderWallet.WalletId == receiverWallet.WalletId)
+        var isSelfTransfer = senderWallet.WalletId == receiverWallet.WalletId;
+        if (isSelfTransfer)
         {
             return ApiResponse<string>.Fail("Cannot transfer to your own wallet.");
+        }
+
+        var receiverUser = await _userVerificationRepository.GetByUserIdAsync(dto.ReceiverUserId);
+        if (receiverUser == null || !receiverUser.IsActive)
+        {
+            return ApiResponse<string>.Fail("Receiver account is not active.");
+        }
+
+        if (!string.Equals(receiverUser.KycStatus, "Approved", StringComparison.OrdinalIgnoreCase))
+        {
+            return ApiResponse<string>.Fail("Receiver KYC is not approved. Transfer is not allowed.");
         }
 
         if (dto.Amount <= 0)
@@ -221,6 +236,8 @@ public class WalletService : IWalletService
         receiverWallet.Balance = receiverWallet.Balance + dto.Amount;
         receiverWallet.UpdatedAt = DateTime.UtcNow;
 
+        await _transferRepository.AddTransferRequestAsync(transferRequest);
+
         var senderEntry = new LedgerEntry();
         senderEntry.WalletId = senderWallet.WalletId;
         senderEntry.EntryType = "Debit";
@@ -243,7 +260,6 @@ public class WalletService : IWalletService
         receiverEntry.Description = "Transfer from " + senderLabel;
         receiverEntry.CreatedAt = DateTime.UtcNow;
 
-        await _transferRepository.AddTransferRequestAsync(transferRequest);
         await _walletRepository.UpdateWalletAsync(senderWallet);
         await _walletRepository.UpdateWalletAsync(receiverWallet);
         await _ledgerRepository.AddLedgerEntryAsync(senderEntry);
@@ -255,7 +271,9 @@ public class WalletService : IWalletService
             senderUserId,
             dto.ReceiverUserId,
             dto.Amount,
-            dto.Note
+            dto.Note,
+            dto.SenderName,
+            dto.ReceiverName
         ));
 
         return ApiResponse<string>.Ok("Transfer completed successfully.");

@@ -1,4 +1,5 @@
-import { Component, OnInit } from '@angular/core';
+﻿﻿import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, DestroyRef, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { RouterLink, RouterLinkActive } from '@angular/router';
@@ -10,6 +11,7 @@ import { AuthService } from '../../../core/services/auth.service';
 @Component({
   selector: 'app-view-edit',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, ReactiveFormsModule, RouterLink, RouterLinkActive],
   template: `
     <div class="h-full flex flex-col space-y-6 page-enter pb-8 max-w-6xl mx-auto w-full">
@@ -43,7 +45,20 @@ import { AuthService } from '../../../core/services/auth.service';
           <div class="h-48 bg-gray-100 rounded-3xl w-full"></div>
           <div class="h-64 bg-gray-100 rounded-3xl w-full"></div>
         </div>
+      } @else if (profileError) {
+        <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
+          {{ profileError }}
+        </div>
       } @else if (profile) {
+        @if (!profile.isActive) {
+          <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-2xl px-4 py-3">
+            <p class="font-semibold">Account Status: Inactive / Blocked</p>
+            @if (profile.inactiveReason) {
+              <p class="mt-1">Reason: {{ profile.inactiveReason }}</p>
+            }
+          </div>
+        }
+
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 relative mt-4">
           <!-- Identity Card Column -->
           <div class="lg:col-span-4 space-y-6">
@@ -70,6 +85,9 @@ import { AuthService } from '../../../core/services/auth.service';
                   <div class="flex items-center justify-center gap-2 mt-4">
                     <span class="px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-brand-navy-light/40 text-brand-navy">
                       {{ profile.role }}
+                    </span>
+                    <span class="px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider" [class]="profile.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'">
+                      {{ profile.isActive ? 'Active' : 'Inactive' }}
                     </span>
                     <span class="px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider" [class]="kycBadgeClass">
                       KYC: {{ profile.kycStatus }}
@@ -123,6 +141,10 @@ import { AuthService } from '../../../core/services/auth.service';
                     </svg>
                   </a>
                 </div>
+              </div>
+            } @else if (rewardsError) {
+              <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-2xl p-4">
+                {{ rewardsError }}
               </div>
             }
           </div>
@@ -218,7 +240,7 @@ import { AuthService } from '../../../core/services/auth.service';
                   <div class="mt-6 pt-6 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
                     <p class="text-sm text-gray-600 font-medium max-w-sm">
                       @if (profile.kycStatus === 'Pending') {
-                         Your documents are under active review. We'll notify you as soon as they are processed (1–2 business days).
+                         Your documents are under active review. We'll notify you as soon as they are processed (1-2 business days).
                       } @else if (profile.kycStatus === 'Rejected') {
                          <span class="text-brand-red font-bold">Action Required:</span> Unfortunately, your KYC was rejected. Please resubmit clear, valid documents.
                       } @else {
@@ -246,12 +268,17 @@ import { AuthService } from '../../../core/services/auth.service';
     </div>
   `
 })
-export class ViewEditComponent implements OnInit {
+export class ViewEditComponent implements OnInit, OnDestroy {
   saving = false;
   saved = false;
+  private savedTimer = 0;
   loading = true;
   profile: any = null;
   rewards: any = null;
+  profileError = '';
+  rewardsError = '';
+
+  private readonly destroyRef = inject(DestroyRef);
 
   form = this.fb.group({
     fullName: ['', [Validators.required, Validators.minLength(2)]],
@@ -274,26 +301,49 @@ export class ViewEditComponent implements OnInit {
     private profileSvc: ProfileService,
     private rewardsSvc: RewardsService,
     private toast: ToastService,
-    private auth: AuthService
+    private auth: AuthService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
-    this.profileSvc.getProfile().subscribe({
+    this.profileSvc.getProfile().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: r => {
         this.profile = r.data;
         this.form.patchValue({ fullName: r.data?.fullName, phone: r.data?.phone });
         this.loading = false;
+        this.profileError = '';
+        this.cdr.markForCheck();
       },
-      error: () => { this.loading = false; }
+      error: () => {
+        this.loading = false;
+        this.profileError = 'Unable to load profile details.';
+        this.cdr.markForCheck();
+      }
     });
-    this.rewardsSvc.getSummary().subscribe(r => this.rewards = r.data ?? null);
+
+    this.rewardsSvc.getSummary().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: r => {
+        this.rewards = r.data ?? null;
+        this.rewardsError = '';
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.rewards = null;
+        this.rewardsError = 'Unable to load rewards snapshot.';
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    clearTimeout(this.savedTimer);
   }
 
   submit(): void {
     if (this.form.invalid) return;
     this.saving = true;
     this.saved = false;
-    this.profileSvc.updateProfile(this.form.value as any).subscribe({
+    this.profileSvc.updateProfile(this.form.value as any).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: r => {
         this.saving = false;
         this.saved = true;
@@ -304,9 +354,17 @@ export class ViewEditComponent implements OnInit {
           email: this.profile.email
         });
         this.toast.success('Profile updated successfully!');
-        setTimeout(() => this.saved = false, 3000);
+        this.cdr.markForCheck();
+        this.savedTimer = window.setTimeout(() => { this.saved = false; this.cdr.markForCheck(); }, 3000);
       },
-      error: () => { this.saving = false; }
+      error: () => {
+        this.saving = false;
+        this.toast.error('Could not update profile right now.');
+        this.cdr.markForCheck();
+      }
     });
   }
 }
+
+
+

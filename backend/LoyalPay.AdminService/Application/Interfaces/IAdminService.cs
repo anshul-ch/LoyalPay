@@ -9,7 +9,7 @@ public interface IAdminService
 {
     Task<ApiResponse<object>> GetDashboardAsync();
     Task<ApiResponse<object>> GetUsersPagedAsync(int page, int pageSize, string? search, string? kycStatus, string? tier, string? status);
-    Task<ApiResponse<string>> UpdateUserStatusAsync(Guid userId, bool isActive, Guid adminUserId);
+    Task<ApiResponse<string>> UpdateUserStatusAsync(Guid userId, bool isActive, string? reason, Guid adminUserId);
 
     /// <summary>
     /// Returns all users with Pending KYC status, including their latest submission metadata.
@@ -35,4 +35,30 @@ public interface IAdminService
     /// Creates a campaign and records the action in the admin audit log.
     /// </summary>
     Task<ApiResponse<Campaign>> CreateCampaignAsync(CampaignDto dto, Guid adminUserId);
+
+    /// <summary>
+    /// Returns all campaigns (active and past) for admin visibility.
+    /// </summary>
+    Task<ApiResponse<List<Campaign>>> GetCampaignsAsync();
+
+    /// <summary>
+    /// Marks a campaign inactive (soft delete) and records audit trail.
+    /// </summary>
+    Task<ApiResponse<string>> DeactivateCampaignAsync(Guid campaignId, Guid adminUserId);
+
+    /// <summary>
+    /// Reactivates an inactive campaign.
+    /// </summary>
+    Task<ApiResponse<string>> ActivateCampaignAsync(Guid campaignId, Guid adminUserId);
+
+    /// <summary>
+    /// Permanently removes a campaign from database.
+    /// </summary>
+    Task<ApiResponse<string>> RemoveCampaignAsync(Guid campaignId, Guid adminUserId);
+
+    Task<ApiResponse<object>> CreateRewardAsync(CreateRewardDto dto, Guid adminUserId);
+    Task<ApiResponse<List<object>>> GetRewardsAsync();
+    Task<ApiResponse<string>> DeactivateRewardAsync(Guid rewardId, Guid adminUserId);
+    Task<ApiResponse<string>> ActivateRewardAsync(Guid rewardId, Guid adminUserId);
+    Task<ApiResponse<string>> RemoveRewardAsync(Guid rewardId, Guid adminUserId);
 }

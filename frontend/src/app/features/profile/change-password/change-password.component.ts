@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+﻿import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators, AbstractControl } from '@angular/forms';
 import { RouterLink, RouterLinkActive } from '@angular/router';
@@ -20,6 +20,7 @@ function passwordValidator(c: AbstractControl) {
 @Component({
   selector: 'app-change-password',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, ReactiveFormsModule, RouterLink, RouterLinkActive],
   template: `
     <div class="max-w-2xl mx-auto space-y-6 page-enter">
@@ -95,7 +96,7 @@ function passwordValidator(c: AbstractControl) {
                       [class]="!f['newPassword'].errors?.[rule.key]
                         ? 'bg-emerald-500 border-emerald-500 text-white'
                         : 'border-gray-300'">
-                      @if (!f['newPassword'].errors?.[rule.key]) { ✓ }
+                      @if (!f['newPassword'].errors?.[rule.key]) { OK }
                     </span>
                     {{ rule.label }}
                   </li>
@@ -170,3 +171,5 @@ export class ChangePasswordComponent {
     });
   }
 }
+
+

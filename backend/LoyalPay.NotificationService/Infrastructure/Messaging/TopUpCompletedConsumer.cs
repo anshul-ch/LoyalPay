@@ -15,11 +15,18 @@ public class TopUpCompletedConsumer : IConsumer<TopUpCompletedEvent>
 
     public async Task Consume(ConsumeContext<TopUpCompletedEvent> context)
     {
+        var msg = context.Message;
+        var body = $"A top-up of INR {msg.Amount:0.00} has been credited to your wallet."
+            + $"\n||Amount:INR {msg.Amount:0.00}"
+            + $"\n||Payment Method:{msg.PaymentMethod}"
+            + $"\n||Reference:{msg.TopUpId}"
+            + $"\n||Date:{DateTime.UtcNow:dd MMM yyyy, HH:mm:ss} UTC";
+
         await _notificationService.CreateAsync(
-            context.Message.UserId,
+            msg.UserId,
             "Transaction",
-            "Top-up successful",
-            $"Your wallet top-up of INR {context.Message.Amount:0.00} via {context.Message.PaymentMethod} was successful.",
+            "Wallet top-up completed",
+            body,
             DateTime.UtcNow);
     }
 }

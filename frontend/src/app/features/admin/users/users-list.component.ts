@@ -1,4 +1,5 @@
-import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+﻿﻿import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, DestroyRef, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminService } from '../../../core/services/admin.service';
@@ -51,9 +52,9 @@ const PAGE_SIZE = 10;
         <select [(ngModel)]="tierFilter" (ngModelChange)="onFilterChange()"
           class="px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-orange/40 focus:border-brand-orange bg-white">
           <option value="">All Tiers</option>
-          <option value="Silver">🥈 Silver</option>
-          <option value="Gold">⭐ Gold</option>
-          <option value="Platinum">✨ Platinum</option>
+          <option value="Silver">Silver</option>
+          <option value="Gold">Gold</option>
+          <option value="Platinum">Platinum</option>
         </select>
         <select [(ngModel)]="statusFilter" (ngModelChange)="onFilterChange()"
           class="px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-orange/40 focus:border-brand-orange bg-white">
@@ -83,6 +84,38 @@ const PAGE_SIZE = 10;
       }
 
       @if (!loading) {
+        @if (statusDialogUser) {
+          <div class="fixed inset-0 z-[950] bg-black/45" (click)="cancelDeactivate()"></div>
+          <div class="fixed inset-0 z-[951] flex items-center justify-center p-4">
+            <div class="w-full max-w-lg rounded-2xl bg-white border border-gray-100 shadow-2xl p-6">
+              <h3 class="text-lg font-bold text-gray-900">Deactivate user</h3>
+              <p class="text-sm text-gray-500 mt-1">
+                Add a reason for deactivating <span class="font-semibold text-gray-700">{{ statusDialogUser.fullName }}</span>.
+              </p>
+
+              <div class="mt-4 space-y-2">
+                <label class="text-sm font-medium text-gray-700">Reason</label>
+                <textarea
+                  [(ngModel)]="statusReason"
+                  rows="3"
+                  maxlength="500"
+                  placeholder="Example: Suspicious activity, policy violation, manual verification pending"
+                  class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/40 focus:border-brand-orange resize-none"></textarea>
+                <p class="text-xs text-gray-400">{{ statusReason.length }}/500</p>
+              </div>
+
+              <div class="mt-5 flex justify-end gap-2">
+                <button type="button" (click)="cancelDeactivate()" class="px-4 py-2 text-sm border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50">
+                  Cancel
+                </button>
+                <button type="button" (click)="confirmDeactivate()" class="px-4 py-2 text-sm bg-brand-red text-white rounded-xl hover:bg-brand-red-dark">
+                  Confirm Deactivate
+                </button>
+              </div>
+            </div>
+          </div>
+        }
+
         <!-- Desktop table -->
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hidden lg:block">
           <div class="overflow-x-auto">
@@ -117,7 +150,7 @@ const PAGE_SIZE = 10;
                         </div>
                       </div>
                     </td>
-                    <td class="px-6 py-4 text-gray-700 font-medium">{{ user.phone || '—' }}</td>
+                    <td class="px-6 py-4 text-gray-700 font-medium">{{ user.phone || '-' }}</td>
                     <td class="px-6 py-4">
                       <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold"
                         [class]="user.role === 'Admin' ? 'bg-brand-yellow-light text-brand-yellow-dark' : 'bg-brand-navy-light text-brand-navy'">
@@ -125,14 +158,22 @@ const PAGE_SIZE = 10;
                       </span>
                     </td>
                     <td class="px-6 py-4">
-                      <button type="button" (click)="toggleStatus(user)"
-                        [disabled]="updatingUserId === user.userId"
-                        class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50"
-                        [class]="user.isActive ? 'bg-emerald-500' : 'bg-gray-300'"
-                        [attr.aria-label]="user.isActive ? 'Deactivate user' : 'Activate user'">
-                        <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200"
-                          [class]="user.isActive ? 'translate-x-6' : 'translate-x-1'"></span>
-                      </button>
+                      <div class="flex items-center gap-2">
+                        <button type="button" (click)="toggleStatus(user)"
+                          [disabled]="updatingUserId === user.userId"
+                          class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50"
+                          [class]="user.isActive ? 'bg-emerald-500' : 'bg-gray-300'"
+                          [attr.aria-label]="user.isActive ? 'Deactivate user' : 'Activate user'">
+                          <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200"
+                            [class]="user.isActive ? 'translate-x-6' : 'translate-x-1'"></span>
+                        </button>
+                        <span class="text-xs font-medium" [class]="user.isActive ? 'text-emerald-600' : 'text-red-600'">
+                          {{ user.isActive ? 'Active' : 'Inactive' }}
+                        </span>
+                      </div>
+                      @if (!user.isActive && user.inactiveReason) {
+                        <p class="text-[11px] text-red-600 mt-1 max-w-[220px] truncate" [title]="user.inactiveReason">{{ user.inactiveReason }}</p>
+                      }
                     </td>
                     <td class="px-6 py-4">
                       <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold" [class]="kycClass(user.kycStatus)">
@@ -188,7 +229,7 @@ const PAGE_SIZE = 10;
               </div>
               <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs border-t border-gray-50 pt-3">
                 <span class="text-gray-400">Phone</span>
-                <span class="text-gray-800 font-medium">{{ user.phone || '—' }}</span>
+                <span class="text-gray-800 font-medium">{{ user.phone || '-' }}</span>
                 <span class="text-gray-400">Joined</span>
                 <span class="text-gray-800 font-medium">{{ user.createdAt | date:'dd MMM yyyy' }}</span>
                 <span class="text-gray-400">Tier</span>
@@ -203,13 +244,19 @@ const PAGE_SIZE = 10;
                 <span class="text-gray-400">Role</span>
                 <span class="text-gray-800 font-medium">{{ user.role }}</span>
                 <span class="text-gray-400">Active</span>
-                <button type="button" (click)="toggleStatus(user)"
-                  [disabled]="updatingUserId === user.userId"
-                  class="justify-self-start relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 disabled:opacity-50"
-                  [class]="user.isActive ? 'bg-emerald-500' : 'bg-gray-300'">
-                  <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200"
-                    [class]="user.isActive ? 'translate-x-6' : 'translate-x-1'"></span>
-                </button>
+                <div class="space-y-1">
+                  <button type="button" (click)="toggleStatus(user)"
+                    [disabled]="updatingUserId === user.userId"
+                    class="justify-self-start relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 disabled:opacity-50"
+                    [class]="user.isActive ? 'bg-emerald-500' : 'bg-gray-300'">
+                    <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200"
+                      [class]="user.isActive ? 'translate-x-6' : 'translate-x-1'"></span>
+                  </button>
+                  <p class="text-[11px] font-medium" [class]="user.isActive ? 'text-emerald-600' : 'text-red-600'">{{ user.isActive ? 'Active' : 'Inactive' }}</p>
+                  @if (!user.isActive && user.inactiveReason) {
+                    <p class="text-[11px] text-red-600 max-w-[220px]">{{ user.inactiveReason }}</p>
+                  }
+                </div>
               </div>
             </article>
           }
@@ -225,7 +272,7 @@ const PAGE_SIZE = 10;
           <div class="flex items-center justify-between gap-4 flex-wrap bg-white border border-gray-100 rounded-2xl px-5 py-3.5 shadow-sm">
             <p class="text-sm text-gray-500">
               Showing
-              <span class="font-semibold text-gray-800">{{ (currentPage - 1) * PAGE_SIZE + 1 }}</span>–<span class="font-semibold text-gray-800">{{ min(currentPage * PAGE_SIZE, totalCount) }}</span>
+              <span class="font-semibold text-gray-800">{{ (currentPage - 1) * PAGE_SIZE + 1 }}</span>-<span class="font-semibold text-gray-800">{{ min(currentPage * PAGE_SIZE, totalCount) }}</span>
               of <span class="font-semibold text-gray-800">{{ totalCount }}</span> users
             </p>
             <div class="flex items-center gap-1">
@@ -239,7 +286,7 @@ const PAGE_SIZE = 10;
               </button>
               @for (p of pageNumbers; track p) {
                 @if (p === -1) {
-                  <span class="w-8 text-center text-sm text-gray-400 select-none">…</span>
+                  <span class="w-8 text-center text-sm text-gray-400 select-none">...</span>
                 } @else {
                   <button type="button" (click)="goTo(p)"
                     class="min-w-[34px] h-[34px] px-2 text-sm font-medium rounded-lg border transition-all"
@@ -272,6 +319,8 @@ export class UsersListComponent implements OnInit {
   users: UserView[] = [];
   loading = true;
   updatingUserId: string | null = null;
+  statusDialogUser: UserView | null = null;
+  statusReason = '';
 
   search = '';
   kycFilter = '';
@@ -296,6 +345,8 @@ export class UsersListComponent implements OnInit {
     return pages;
   }
 
+  private readonly destroyRef = inject(DestroyRef);
+
   constructor(
     private adminSvc: AdminService,
     private toast: ToastService,
@@ -303,8 +354,8 @@ export class UsersListComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    // Debounce search input — only fires API call 350ms after user stops typing
-    this.searchSubject.pipe(debounceTime(350), distinctUntilChanged()).subscribe(() => {
+    // Debounce search input so it only fires after typing pauses.
+    this.searchSubject.pipe(debounceTime(350), distinctUntilChanged()).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       this.currentPage = 1;
       this.fetchPage();
     });
@@ -331,7 +382,7 @@ export class UsersListComponent implements OnInit {
     this.cdr.markForCheck();
 
     this.adminSvc.getUsers(this.currentPage, PAGE_SIZE, this.search, this.kycFilter, this.tierFilter, this.statusFilter)
-      .subscribe({
+      .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: res => {
           const data = res.data!;
           this.users = data.items;
@@ -350,19 +401,63 @@ export class UsersListComponent implements OnInit {
 
   toggleStatus(user: UserView): void {
     if (this.updatingUserId) return;
+
+    if (user.isActive) {
+      this.statusDialogUser = user;
+      this.statusReason = '';
+      this.cdr.markForCheck();
+      return;
+    }
+
+    this.applyStatusChange(user, true, undefined);
+  }
+
+  confirmDeactivate(): void {
+    if (!this.statusDialogUser) return;
+
+    const reason = this.statusReason.trim();
+    if (!reason) {
+      this.toast.error('Please provide a reason before deactivating a user.');
+      return;
+    }
+
+    const user = this.statusDialogUser;
+    this.statusDialogUser = null;
+    this.applyStatusChange(user, false, reason);
+  }
+
+  cancelDeactivate(): void {
+    this.statusDialogUser = null;
+    this.statusReason = '';
+    this.cdr.markForCheck();
+  }
+
+  private applyStatusChange(user: UserView, isActive: boolean, reason?: string): void {
     const prev = user.isActive;
-    user.isActive = !prev;
+    const prevReason = user.inactiveReason;
+    user.isActive = isActive;
+    user.inactiveReason = isActive ? undefined : reason;
     this.updatingUserId = user.userId;
     this.cdr.markForCheck();
 
-    this.adminSvc.updateUserStatus(user.userId, user.isActive).subscribe({
+    this.adminSvc.updateUserStatus(user.userId, { isActive, reason }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: res => {
+        if (!res.success) {
+          user.isActive = prev;
+          user.inactiveReason = prevReason;
+          this.toast.error(res.message || 'Failed to update user status.');
+          this.updatingUserId = null;
+          this.cdr.markForCheck();
+          return;
+        }
+
         this.toast.success(res.message ?? `User ${user.isActive ? 'activated' : 'deactivated'}.`);
         this.updatingUserId = null;
         this.cdr.markForCheck();
       },
       error: () => {
         user.isActive = prev;
+        user.inactiveReason = prevReason;
         this.updatingUserId = null;
         this.toast.error('Failed to update user status.');
         this.cdr.markForCheck();
@@ -377,9 +472,9 @@ export class UsersListComponent implements OnInit {
   }
 
   tierIcon(tier: string | undefined): string {
-    if (tier === 'Platinum') return '✨';
-    if (tier === 'Gold') return '⭐';
-    return '🥈';
+    if (tier === 'Platinum') return 'P';
+    if (tier === 'Gold') return 'G';
+    return 'S';
   }
 
   kycClass(status: string): string {
@@ -391,3 +486,8 @@ export class UsersListComponent implements OnInit {
     return map[status] ?? 'bg-gray-100 text-gray-500';
   }
 }
+
+
+
+
+

@@ -1,4 +1,5 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, DestroyRef, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { RewardsService } from '../../../core/services/rewards.service';
@@ -7,6 +8,7 @@ import { RewardTransactionDto } from '../../../core/models/api.models';
 @Component({
   selector: 'app-rewards-history',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, RouterLink],
   template: `
     <div class="space-y-5 page-enter">
@@ -39,6 +41,8 @@ import { RewardTransactionDto } from '../../../core/models/api.models';
               </div>
             }
           </div>
+        } @else if (error) {
+          <div class="p-6 text-sm text-red-700 bg-red-50 border-t border-red-100">{{ error }}</div>
         } @else {
           <div class="divide-y divide-gray-50">
             @for (tx of history; track tx.transactionId) {
@@ -85,13 +89,32 @@ import { RewardTransactionDto } from '../../../core/models/api.models';
 export class HistoryComponent implements OnInit {
   history: RewardTransactionDto[] = [];
   loading = true;
+  error = '';
 
-  constructor(private rewardsSvc: RewardsService) {}
+  private readonly destroyRef = inject(DestroyRef);
+
+  constructor(private rewardsSvc: RewardsService, private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
-    this.rewardsSvc.getHistory().subscribe({
-      next: r => { this.history = r.data ?? []; this.loading = false; },
-      error: () => { this.loading = false; }
+    this.rewardsSvc.getHistory().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: r => {
+        this.history = r.data ?? [];
+        this.loading = false;
+        this.error = '';
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.loading = false;
+        this.error = 'Unable to load reward history.';
+        this.cdr.markForCheck();
+      }
     });
   }
 }
+
+
+
+
+
+
+

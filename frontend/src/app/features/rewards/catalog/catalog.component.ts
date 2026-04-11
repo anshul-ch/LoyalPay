@@ -1,4 +1,5 @@
-import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+﻿import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, DestroyRef, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { RewardsService } from '../../../core/services/rewards.service';
@@ -48,6 +49,8 @@ import { CatalogItemDto, RewardSummaryDto } from '../../../core/models/api.model
             </div>
           }
         </div>
+      } @else if (error) {
+        <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">{{ error }}</div>
       } @else {
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           @for (item of items; track item.itemId) {
@@ -69,6 +72,9 @@ import { CatalogItemDto, RewardSummaryDto } from '../../../core/models/api.model
               } @else {
                 <div class="flex-1 mb-4"></div>
               }
+              <p class="text-xs text-gray-600 mb-3">
+                Expires on: {{ item.expiresAt ? (item.expiresAt | date:'dd MMM yyyy') : '-' }}
+              </p>
               <button (click)="redeem(item)" [disabled]="redeeming === item.itemId || (summary && summary.totalPoints < item.pointsCost)"
                 class="w-full py-2.5 text-sm font-semibold rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed"
                 [class]="summary && summary.totalPoints >= item.pointsCost
@@ -111,6 +117,9 @@ export class CatalogComponent implements OnInit {
   summary: RewardSummaryDto | null = null;
   redeeming: string | null = null;
   loading = true;
+  error = '';
+
+  private readonly destroyRef = inject(DestroyRef);
 
   constructor(
     private rewardsSvc: RewardsService,
@@ -120,15 +129,20 @@ export class CatalogComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.rewardsSvc.getCatalog().subscribe({
+    this.rewardsSvc.getCatalog().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: r => {
         this.items = (r.data ?? []).filter(i => i.isActive);
         this.loading = false;
+        this.error = '';
         this.cdr.markForCheck();
       },
-      error: () => { this.loading = false; this.cdr.markForCheck(); }
+      error: () => {
+        this.loading = false;
+        this.error = 'Unable to load rewards catalog.';
+        this.cdr.markForCheck();
+      }
     });
-    this.rewardsSvc.getSummary().subscribe(r => {
+    this.rewardsSvc.getSummary().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(r => {
       this.summary = r.data ?? null;
       this.cdr.markForCheck();
     });
@@ -136,20 +150,25 @@ export class CatalogComponent implements OnInit {
 
   redeem(item: CatalogItemDto): void {
     this.redeeming = item.itemId;
-    this.rewardsSvc.redeem({ itemId: item.itemId }).subscribe({
+    this.rewardsSvc.redeem({ itemId: item.itemId }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.redeeming = null;
         this.toast.success(`Redeemed "${item.name}" successfully!`);
         // Refresh summary to update points
-        this.rewardsSvc.getSummary().subscribe(r => {
+        this.rewardsSvc.getSummary().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(r => {
           this.summary = r.data ?? null;
           this.cdr.markForCheck();
         });
         // Refresh wallet in case the redemption affects balance
-        this.walletSvc.getBalance().subscribe();
+        this.walletSvc.getBalance().pipe(takeUntilDestroyed(this.destroyRef)).subscribe();
         this.cdr.markForCheck();
       },
       error: () => { this.redeeming = null; this.cdr.markForCheck(); }
     });
   }
 }
+
+
+
+
+

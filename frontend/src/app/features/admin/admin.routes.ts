@@ -16,5 +16,9 @@ export const ADMIN_ROUTES: Routes = [
   {
     path: 'campaigns',
     loadComponent: () => import('./campaigns/campaigns.component').then(m => m.CampaignsComponent)
+  },
+  {
+    path: 'rewards',
+    loadComponent: () => import('./rewards/rewards.component').then(m => m.RewardsAdminComponent)
   }
 ];

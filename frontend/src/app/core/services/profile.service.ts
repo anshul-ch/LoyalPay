@@ -42,7 +42,7 @@ export class ProfileService {
     if (forceRefresh || !this.kycStatusRequest$) {
       this.kycStatusRequest$ = this.http
         .get<ApiResponse<KycStatusDto>>(`${this.api}/profile/kyc`)
-        .pipe(shareReplay(1));
+        .pipe(shareReplay({ bufferSize: 1, refCount: true }));
     }
 
     return this.kycStatusRequest$;

@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators, AbstractControl } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -19,6 +19,7 @@ function passwordValidator(c: AbstractControl) {
 @Component({
   selector: 'app-force-password-change',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, ReactiveFormsModule, RouterLink],
   template: `
     <div class="min-h-screen bg-gradient-to-br from-brand-navy to-brand-navy-dark flex items-center justify-center p-4">
@@ -97,7 +98,8 @@ export class ForcePasswordChangeComponent {
     private profileSvc: ProfileService,
     private auth: AuthService,
     private router: Router,
-    private toast: ToastService
+    private toast: ToastService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -118,6 +120,7 @@ export class ForcePasswordChangeComponent {
         this.loading = false;
         if (!res.success) {
           this.toast.error(res.message || 'Unable to change password.');
+          this.cdr.markForCheck();
           return;
         }
 
@@ -127,7 +130,10 @@ export class ForcePasswordChangeComponent {
       },
       error: () => {
         this.loading = false;
+        this.cdr.markForCheck();
       }
     });
   }
 }
+
+

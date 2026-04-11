@@ -46,6 +46,26 @@ public class RewardsService : IRewardsService
         return Math.Max(0m, amount);
     }
 
+    private static int GetRewardExpiryMonths(int pointsCost)
+    {
+        if (pointsCost <= 300) return 1;
+        if (pointsCost <= 1000) return 2;
+        if (pointsCost <= 3000) return 3;
+        return 4;
+    }
+
+    private async Task RemoveExpiredRewardsAsync()
+    {
+        var expired = await _catalogRepository.GetExpiredCatalogItemsAsync(DateTime.UtcNow);
+        if (expired.Count == 0)
+        {
+            return;
+        }
+
+        await _catalogRepository.RemoveCatalogItemsAsync(expired);
+        await _catalogRepository.SaveChangesAsync();
+    }
+
     private string GetTier(int points)
     {
         if (points >= 5000)
@@ -97,7 +117,22 @@ public class RewardsService : IRewardsService
 
     public async Task<ApiResponse<List<CatalogItemDto>>> GetCatalogAsync()
     {
+        await RemoveExpiredRewardsAsync();
+
         var items = await _catalogRepository.GetAllCatalogItemsAsync();
+
+        var hasMissingExpiry = false;
+        foreach (var item in items)
+        {
+            if (item.ExpiresAt != null) continue;
+            item.ExpiresAt = item.CreatedAt.AddMonths(GetRewardExpiryMonths(item.PointsCost));
+            hasMissingExpiry = true;
+        }
+
+        if (hasMissingExpiry)
+        {
+            await _catalogRepository.SaveChangesAsync();
+        }
 
         var catalog = items.Select(item => new CatalogItemDto
         {
@@ -106,7 +141,8 @@ public class RewardsService : IRewardsService
             Description = item.Description,
             ItemType = item.ItemType,
             PointsCost = item.PointsCost,
-            IsActive = item.IsActive
+            IsActive = item.IsActive,
+            ExpiresAt = item.ExpiresAt
         }).ToList();
 
         return ApiResponse<List<CatalogItemDto>>.Ok(catalog);

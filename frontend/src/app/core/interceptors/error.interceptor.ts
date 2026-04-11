@@ -8,10 +8,13 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const toast = inject(ToastService);
   const loading = inject(LoadingService);
 
-  loading.show();
+  // Skip loading indicator for background/silent requests
+  const silent = req.headers.has('X-Silent');
+  if (!silent) loading.show();
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
+      // 401s are handled by token-refresh interceptor — don't show toast here
       if (error.status === 401) {
         return throwError(() => error);
       }
@@ -36,6 +39,6 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
 
       return throwError(() => error);
     }),
-    finalize(() => loading.hide())
+    finalize(() => { if (!silent) loading.hide(); })
   );
 };

@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CurrencyInrPipe } from '../../../shared/pipes/currency-inr.pipe';
 import { BalanceDto } from '../../../core/models/api.models';
@@ -7,6 +7,7 @@ import { BalanceDto } from '../../../core/models/api.models';
   selector: 'app-balance-card',
   standalone: true,
   imports: [CommonModule, CurrencyInrPipe],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="relative w-full max-w-md mx-auto aspect-[1.586/1] rounded-3xl p-6 sm:p-8 text-white shadow-2xl overflow-hidden group">
       <!-- Glow & Ambient Background -->

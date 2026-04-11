@@ -29,7 +29,8 @@ public class AuthController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> Login([FromBody] LoginDto dto)
     {
-        var result = await _authService.LoginAsync(dto);
+        var userAgent = Request.Headers.UserAgent.ToString();
+        var result = await _authService.LoginAsync(dto, userAgent);
         return Ok(result);
     }
 
@@ -42,7 +43,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("logout")]
-    [Authorize]
+    [AllowAnonymous]
     public async Task<IActionResult> Logout([FromBody] RefreshRequestDto dto)
     {
         await _authService.LogoutAsync(dto.RefreshToken);

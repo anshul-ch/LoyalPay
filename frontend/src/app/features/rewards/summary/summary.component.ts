@@ -1,4 +1,5 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, DestroyRef, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { RewardsService } from '../../../core/services/rewards.service';
@@ -14,15 +15,16 @@ interface TierInfo {
 }
 
 const TIERS: TierInfo[] = [
-  { name: 'Bronze',   icon: '🥉', minPoints: 0,     color: 'text-amber-700',   bg: 'bg-amber-50',   border: 'border-amber-200' },
-  { name: 'Silver',   icon: '🥈', minPoints: 1000,  color: 'text-slate-600',   bg: 'bg-slate-50',   border: 'border-slate-200' },
-  { name: 'Gold',     icon: '🥇', minPoints: 5000,  color: 'text-yellow-600',  bg: 'bg-yellow-50',  border: 'border-yellow-200' },
-  { name: 'Platinum', icon: '💎', minPoints: 15000, color: 'text-indigo-600',  bg: 'bg-indigo-50',  border: 'border-indigo-200' },
+  { name: 'Bronze',   icon: 'B', minPoints: 0,     color: 'text-amber-700',   bg: 'bg-amber-50',   border: 'border-amber-200' },
+  { name: 'Silver',   icon: 'S', minPoints: 1000,  color: 'text-slate-600',   bg: 'bg-slate-50',   border: 'border-slate-200' },
+  { name: 'Gold',     icon: 'G', minPoints: 5000,  color: 'text-yellow-600',  bg: 'bg-yellow-50',  border: 'border-yellow-200' },
+  { name: 'Platinum', icon: 'P', minPoints: 15000, color: 'text-indigo-600',  bg: 'bg-indigo-50',  border: 'border-indigo-200' },
 ];
 
 @Component({
   selector: 'app-rewards-summary',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, RouterLink],
   template: `
     <div class="space-y-6 page-enter">
@@ -45,6 +47,10 @@ const TIERS: TierInfo[] = [
           <div class="h-14 w-48 bg-gray-100 rounded"></div>
           <div class="h-3 bg-gray-100 rounded-full"></div>
         </div>
+      } @else if (error) {
+        <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
+          {{ error }}
+        </div>
       } @else if (summary) {
         <!-- Main points card -->
         <div class="bg-gradient-to-br from-brand-navy via-brand-navy to-brand-navy-dark rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
@@ -59,7 +65,7 @@ const TIERS: TierInfo[] = [
               </div>
               <div class="text-right">
                 <div class="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20">
-                  <span class="text-2xl">{{ currentTier?.icon }}</span>
+                  <span class="text-2xl font-black">{{ currentTier?.icon }}</span>
                   <div>
                     <p class="text-white font-bold text-sm">{{ summary.tier }}</p>
                     <p class="text-blue-300 text-xs">Current Tier</p>
@@ -72,7 +78,7 @@ const TIERS: TierInfo[] = [
             @if (nextTier) {
               <div class="mt-6">
                 <div class="flex items-center justify-between text-xs mb-2">
-                  <span class="text-blue-200 font-medium">{{ summary.tier }} → {{ nextTier.name }}</span>
+                  <span class="text-blue-200 font-medium">{{ summary.tier }} -> {{ nextTier.name }}</span>
                   <span class="text-blue-200">{{ pointsToNext | number }} pts to go</span>
                 </div>
                 <div class="w-full bg-white/10 rounded-full h-2.5 overflow-hidden">
@@ -87,7 +93,7 @@ const TIERS: TierInfo[] = [
               </div>
             } @else {
               <div class="mt-6 flex items-center gap-2 px-4 py-2.5 bg-white/10 rounded-xl w-fit">
-                <span class="text-lg">💎</span>
+                <span class="text-lg font-black">P</span>
                 <span class="text-sm text-amber-200 font-semibold">Maximum tier reached!</span>
               </div>
             }
@@ -173,6 +179,7 @@ const TIERS: TierInfo[] = [
 export class SummaryComponent implements OnInit {
   summary: RewardSummaryDto | null = null;
   loading = true;
+  error = '';
   tiers = TIERS;
 
   get currentTier(): TierInfo | undefined {
@@ -209,12 +216,30 @@ export class SummaryComponent implements OnInit {
     return pts >= tier.minPoints;
   }
 
-  constructor(private rewardsSvc: RewardsService) {}
+  private readonly destroyRef = inject(DestroyRef);
+
+  constructor(private rewardsSvc: RewardsService, private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
-    this.rewardsSvc.getSummary().subscribe({
-      next: r => { this.summary = r.data ?? null; this.loading = false; },
-      error: () => { this.loading = false; }
+    this.rewardsSvc.getSummary().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: r => {
+        this.summary = r.data ?? null;
+        this.loading = false;
+        this.error = '';
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.loading = false;
+        this.error = 'Unable to load rewards summary.';
+        this.cdr.markForCheck();
+      }
     });
   }
 }
+
+
+
+
+
+
+

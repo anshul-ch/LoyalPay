@@ -6,4 +6,7 @@ public class UpdateUserStatusDto
 {
     [Required(ErrorMessage = "isActive is required.")]
     public bool IsActive { get; set; }
+
+    [MaxLength(500)]
+    public string? Reason { get; set; }
 }

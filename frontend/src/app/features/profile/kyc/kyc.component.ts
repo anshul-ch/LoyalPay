@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { RouterLink, RouterLinkActive } from '@angular/router';
@@ -8,6 +8,7 @@ import { ToastService } from '../../../core/services/toast.service';
 @Component({
   selector: 'app-kyc',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, ReactiveFormsModule, RouterLink, RouterLinkActive],
   template: `
     <div class="max-w-2xl mx-auto space-y-6 page-enter">
@@ -34,13 +35,13 @@ import { ToastService } from '../../../core/services/toast.service';
       </div>
 
       <!-- KYC Status Banner -->
-      @if (kycStatus && kycStatus.status !== 'NotSubmitted') {
+      @if (kycStatus && normalizedStatus !== 'NotSubmitted') {
         <div class="rounded-xl p-4 border flex items-start gap-3" [class]="statusCardClass">
           <span class="text-2xl flex-shrink-0">{{ statusIcon }}</span>
           <div>
-            <p class="font-semibold text-sm">KYC Status: {{ kycStatus.status }}</p>
+            <p class="font-semibold text-sm">KYC Status: {{ normalizedStatus }}</p>
             @if (kycStatus.documentType) {
-              <p class="text-sm mt-0.5 opacity-80">{{ kycStatus.documentType }} · {{ kycStatus.documentNumber }}</p>
+              <p class="text-sm mt-0.5 opacity-80">{{ kycStatus.documentType }} | {{ kycStatus.documentNumber }}</p>
             }
             @if (kycStatus.rejectionNote) {
               <p class="text-sm mt-1 font-medium">Reason: {{ kycStatus.rejectionNote }}</p>
@@ -53,7 +54,7 @@ import { ToastService } from '../../../core/services/toast.service';
       }
 
       <!-- Approved state -->
-      @if (kycStatus?.status === 'Approved') {
+      @if (normalizedStatus === 'Approved') {
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
           <div class="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg class="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -66,7 +67,7 @@ import { ToastService } from '../../../core/services/toast.service';
       }
 
       <!-- Pending state -->
-      @if (kycStatus?.status === 'Pending') {
+      @if (normalizedStatus === 'Pending') {
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
           <div class="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg class="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -79,7 +80,7 @@ import { ToastService } from '../../../core/services/toast.service';
       }
 
       <!-- Submit form (no KYC or rejected) -->
-      @if (!kycStatus || kycStatus.status === 'Rejected' || kycStatus.status === 'NotSubmitted') {
+      @if (!kycStatus || normalizedStatus === 'Rejected' || normalizedStatus === 'NotSubmitted') {
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
           <h2 class="font-semibold text-gray-900 mb-1">Submit KYC Document</h2>
           <p class="text-sm text-gray-500 mb-5">Upload a government-issued ID for identity verification</p>
@@ -164,24 +165,67 @@ export class KycComponent implements OnInit {
     documentNumber: ['', [Validators.required, Validators.minLength(4)]]
   });
 
+  get normalizedStatus(): string {
+    const rawValue = this.kycStatus?.status
+      ?? this.kycStatus?.Status
+      ?? this.kycStatus?.kycStatus
+      ?? this.kycStatus?.KycStatus
+      ?? '';
+
+    const raw = rawValue.toString().trim().toLowerCase();
+    if (raw === 'approved') return 'Approved';
+    if (raw === 'pending') return 'Pending';
+    if (raw === 'rejected') return 'Rejected';
+    return 'NotSubmitted';
+  }
+
   get statusCardClass(): string {
     const map: Record<string, string> = {
       Approved: 'bg-emerald-50 border-emerald-200 text-emerald-800',
       Pending: 'bg-amber-50 border-amber-200 text-amber-800',
       Rejected: 'bg-red-50 border-red-200 text-red-800'
     };
-    return map[this.kycStatus?.status] ?? 'bg-gray-50 border-gray-200';
+    return map[this.normalizedStatus] ?? 'bg-gray-50 border-gray-200';
   }
 
   get statusIcon(): string {
-    const map: Record<string, string> = { Approved: '✅', Pending: '⏳', Rejected: '❌' };
-    return map[this.kycStatus?.status] ?? '📄';
+    const map: Record<string, string> = { Approved: 'OK', Pending: '...', Rejected: 'X' };
+    return map[this.normalizedStatus] ?? 'DOC';
   }
 
-  constructor(private fb: FormBuilder, private profileSvc: ProfileService, private toast: ToastService) {}
+  constructor(
+    private fb: FormBuilder,
+    private profileSvc: ProfileService,
+    private toast: ToastService,
+    private cdr: ChangeDetectorRef
+  ) {}
 
   ngOnInit(): void {
-    this.profileSvc.getKycStatus(true).subscribe(r => this.kycStatus = r.data ?? null);
+    this.profileSvc.getKycStatus(true).subscribe({
+      next: r => {
+        this.kycStatus = r.data ?? null;
+        this.cdr.markForCheck();
+
+        if (this.normalizedStatus === 'NotSubmitted') {
+          this.profileSvc.getProfile().subscribe({
+            next: p => {
+              const profileStatus = (p.data as any)?.kycStatus ?? (p.data as any)?.KycStatus;
+              if (profileStatus) {
+                this.kycStatus = {
+                  ...(this.kycStatus ?? {}),
+                  status: profileStatus
+                };
+                this.cdr.markForCheck();
+              }
+            }
+          });
+        }
+      },
+      error: () => {
+        this.kycStatus = { status: 'NotSubmitted' };
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   onFile(event: Event): void {
@@ -232,8 +276,14 @@ export class KycComponent implements OnInit {
         this.fileBase64 = '';
         this.fileName = '';
         this.toast.success('KYC submitted! Pending review.');
+        this.cdr.markForCheck();
       },
-      error: () => { this.loading = false; }
+      error: () => {
+        this.loading = false;
+        this.cdr.markForCheck();
+      }
     });
   }
 }
+
+

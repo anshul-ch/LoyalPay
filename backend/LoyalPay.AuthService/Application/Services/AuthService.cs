@@ -99,7 +99,7 @@ public class AuthService : IAuthService
             FullName = dto.FullName,
             Email = dto.Email,
             Phone = dto.Phone,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password, workFactor: 10),
             Role = "User",
             IsActive = true,
             KycStatus = "NotSubmitted"
@@ -115,7 +115,7 @@ public class AuthService : IAuthService
         return ApiResponse<TokenDto>.Ok(tokens, "Account created successfully!");
     }
 
-    public async Task<ApiResponse<TokenDto>> LoginAsync(LoginDto dto)
+    public async Task<ApiResponse<TokenDto>> LoginAsync(LoginDto dto, string? userAgent = null)
     {
         var user = await _userRepository.GetUserByEmailAsync(dto.Email);
         if (user == null)
@@ -131,7 +131,11 @@ public class AuthService : IAuthService
 
         if (!user.IsActive)
         {
-            return ApiResponse<TokenDto>.Fail("This account has been deactivated.");
+            var reason = string.IsNullOrWhiteSpace(user.InactiveReason)
+                ? string.Empty
+                : $" Reason: {user.InactiveReason}";
+
+            return ApiResponse<TokenDto>.Fail($"This account has been deactivated.{reason}");
         }
 
         // Revoke all existing sessions on new login (single-session policy).
@@ -143,9 +147,34 @@ public class AuthService : IAuthService
 
         await _refreshTokenRepository.SaveChangesAsync();
 
+        var (browser, os) = ParseUserAgent(userAgent);
         var tokens = await IssueTokensAsync(user);
-        await _publishEndpoint.Publish(new UserLoggedInEvent(user.UserId, user.Email, user.FullName, DateTime.UtcNow));
+        await _publishEndpoint.Publish(new UserLoggedInEvent(user.UserId, user.Email, user.FullName, DateTime.UtcNow, browser, os));
         return ApiResponse<TokenDto>.Ok(tokens);
+    }
+
+    private static (string? Browser, string? Os) ParseUserAgent(string? userAgent)
+    {
+        if (string.IsNullOrWhiteSpace(userAgent)) return (null, null);
+
+        string? browser = null;
+        string? os = null;
+
+        // Browser detection — order matters (Edge before Chrome, Chrome before Safari)
+        if (userAgent.Contains("Edg/")) browser = "Microsoft Edge";
+        else if (userAgent.Contains("OPR/") || userAgent.Contains("Opera")) browser = "Opera";
+        else if (userAgent.Contains("Chrome/")) browser = "Chrome";
+        else if (userAgent.Contains("Firefox/")) browser = "Firefox";
+        else if (userAgent.Contains("Safari/") && !userAgent.Contains("Chrome")) browser = "Safari";
+
+        // OS detection
+        if (userAgent.Contains("Windows NT")) os = "Windows";
+        else if (userAgent.Contains("Mac OS X")) os = "macOS";
+        else if (userAgent.Contains("Android")) os = "Android";
+        else if (userAgent.Contains("iPhone") || userAgent.Contains("iPad")) os = "iOS";
+        else if (userAgent.Contains("Linux")) os = "Linux";
+
+        return (browser, os);
     }
 
     public async Task<ApiResponse<TokenDto>> RefreshAsync(string refreshToken)
@@ -159,7 +188,11 @@ public class AuthService : IAuthService
 
         if (!storedToken.User.IsActive)
         {
-            return ApiResponse<TokenDto>.Fail("This account has been deactivated.");
+            var reason = string.IsNullOrWhiteSpace(storedToken.User.InactiveReason)
+                ? string.Empty
+                : $" Reason: {storedToken.User.InactiveReason}";
+
+            return ApiResponse<TokenDto>.Fail($"This account has been deactivated.{reason}");
         }
 
         if (storedToken.ExpiresAt < DateTime.UtcNow)
@@ -198,7 +231,7 @@ public class AuthService : IAuthService
         }
 
         var tempPassword = Convert.ToBase64String(Guid.NewGuid().ToByteArray())[..12];
-        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(tempPassword);
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(tempPassword, workFactor: 10);
         user.MustChangePassword = true;
 
         // Invalidate all active sessions so the old password can't be reused.
@@ -218,8 +251,9 @@ public class AuthService : IAuthService
             tempPassword,
             DateTime.UtcNow));
 
-        // TODO: In production, send tempPassword via email and return only safeMessage.
-        return ApiResponse<string>.Ok($"Temporary password: {tempPassword}", safeMessage);
+        // Temp password is delivered exclusively via email through the notification service.
+
+        return ApiResponse<string>.Ok(safeMessage);
     }
 
     public async Task<ApiResponse<object>> GetProfileAsync(Guid userId)
@@ -239,6 +273,7 @@ public class AuthService : IAuthService
             user.Role,
             KycStatus = NormalizeKycStatus(user.KycStatus),
             user.KycDocumentType,
+            user.InactiveReason,
             user.IsActive,
             user.CreatedAt
         };
@@ -266,7 +301,9 @@ public class AuthService : IAuthService
             user.Email,
             user.Phone,
             user.Role,
-            KycStatus = NormalizeKycStatus(user.KycStatus)
+            KycStatus = NormalizeKycStatus(user.KycStatus),
+            user.IsActive,
+            user.InactiveReason
         };
 
         return ApiResponse<object>.Ok(data);
@@ -285,7 +322,7 @@ public class AuthService : IAuthService
             return ApiResponse<string>.Fail("Current password is incorrect.");
         }
 
-        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword, workFactor: 10);
         user.MustChangePassword = false;
 
         // Revoke all sessions so the user must log in again with the new password.

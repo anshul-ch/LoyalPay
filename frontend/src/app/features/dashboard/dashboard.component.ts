@@ -1,4 +1,5 @@
-import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+﻿﻿import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, DestroyRef, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { WalletService } from '../../core/services/wallet.service';
@@ -39,23 +40,19 @@ import { ProfileService } from '../../core/services/profile.service';
           
           <!-- Glassmorphic Quick Actions -->
           <div class="flex flex-wrap items-center gap-3 bg-white/10 backdrop-blur-md p-2 rounded-2xl border border-white/20">
-            <a routerLink="/wallet/topup"
-               [class.pointer-events-none]="kycStatus !== 'Approved'"
-               [class.opacity-50]="kycStatus !== 'Approved'"
+            <a [routerLink]="kycStatus === 'Approved' ? '/wallet/topup' : '/profile/kyc'"
                class="flex items-center gap-2 px-4 py-2.5 bg-white text-brand-navy rounded-xl text-sm font-bold hover:bg-gray-50 transition shadow-sm group">
               <svg class="w-4 h-4 group-hover:-translate-y-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
               </svg>
               Top Up
             </a>
-            <a routerLink="/wallet/transfer"
-               [class.pointer-events-none]="kycStatus !== 'Approved'"
-               [class.opacity-50]="kycStatus !== 'Approved'"
-               class="flex items-center gap-2 px-4 py-2.5 bg-brand-orange text-white rounded-xl text-sm font-bold hover:bg-brand-orange-dark transition shadow-sm group">
+            <a [routerLink]="kycStatus === 'Approved' ? '/wallet/transfer' : '/profile/kyc'"
+               class="flex items-center gap-2 px-5 py-3 bg-brand-orange text-white rounded-xl text-sm font-black hover:bg-brand-orange-dark transition shadow-lg shadow-brand-orange/30 group ring-2 ring-white/30">
               <svg class="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
               </svg>
-              Transfer
+              Pay Now
             </a>
             <a routerLink="/rewards/catalog"
                class="flex items-center gap-2 px-4 py-2.5 bg-white/10 text-white rounded-xl text-sm font-bold hover:bg-white/20 transition group">
@@ -153,7 +150,7 @@ import { ProfileService } from '../../core/services/profile.service';
               </div>
               <div>
                 <p class="text-xs font-bold text-brand-orange uppercase tracking-wider">Current Tier</p>
-                <p class="font-bold text-gray-900">{{ rewards?.tier ?? 'Silver' }}</p>
+                <p class="font-bold text-gray-900">{{ rewards?.tier }}</p>
               </div>
             </div>
 
@@ -162,23 +159,31 @@ import { ProfileService } from '../../core/services/profile.service';
                 <div class="h-10 w-32 bg-gray-100 rounded-lg animate-pulse"></div>
                 <div class="h-2 w-full bg-gray-100 rounded-full animate-pulse"></div>
               </div>
-            } @else {
+            } @else if (rewardsError) {
+              <div class="mt-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
+                {{ rewardsError }}
+              </div>
+            } @else if (rewards) {
               <div class="mt-4">
-                <p class="text-[42px] font-black leading-none text-gray-900 tracking-tight">{{ rewards?.totalPoints ?? 0 | number }}</p>
+                <p class="text-[42px] font-black leading-none text-gray-900 tracking-tight">{{ rewards.totalPoints | number }}</p>
                 <p class="text-sm font-medium text-gray-500 mt-1 mb-8">Lifetime accrued points</p>
                 
                 <div class="bg-gray-50 rounded-2xl p-5 border border-gray-100/80">
                   <div class="flex justify-between items-end mb-2">
                     <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Progress</span>
-                    <span class="text-sm font-bold text-gray-900">{{ rewards?.totalPoints ?? 0 | number }} / {{ getNextTierMax(rewards?.totalPoints ?? 0) | number }}</span>
+                    <span class="text-sm font-bold text-gray-900">{{ rewards.totalPoints | number }} / {{ getNextTierMax(rewards.totalPoints) | number }}</span>
                   </div>
                   
                   <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden shadow-inner">
                     <div class="bg-gradient-to-r from-brand-orange to-brand-yellow h-full rounded-full transition-all duration-1000 ease-out" 
-                         [style.width]="calcProgress(rewards?.totalPoints ?? 0)"></div>
+                         [style.width]="calcProgress(rewards.totalPoints)"></div>
                   </div>
-                  <p class="text-xs font-medium text-gray-500 mt-3 text-center">{{ rewards?.tierProgress }}</p>
+                  <p class="text-xs font-medium text-gray-500 mt-3 text-center">{{ rewards.tierProgress }}</p>
                 </div>
+              </div>
+            } @else {
+              <div class="mt-4 bg-gray-50 border border-gray-100 text-gray-600 text-sm rounded-xl px-4 py-3">
+                Rewards summary is currently unavailable.
               </div>
             }
           </div>
@@ -196,6 +201,9 @@ export class DashboardComponent implements OnInit {
   loadingRewards = true;
   loadingTx = true;
   kycStatus: string | null = null;
+  rewardsError = '';
+
+  private readonly destroyRef = inject(DestroyRef);
 
   constructor(
     private walletSvc: WalletService,
@@ -205,19 +213,28 @@ export class DashboardComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.profileSvc.getKycStatus().subscribe(r => {
-      this.kycStatus = r.data?.status ?? null;
+    this.profileSvc.getKycStatus().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(r => {
+      this.kycStatus = (r.data as any)?.status ?? (r.data as any)?.Status ?? null;
       this.cdr.markForCheck();
     });
-    this.walletSvc.getBalance().subscribe({
+    this.walletSvc.getBalance().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: r => { this.balance = r.data ?? null; this.loadingBalance = false; this.cdr.markForCheck(); },
       error: () => { this.loadingBalance = false; this.cdr.markForCheck(); }
     });
-    this.rewardsSvc.getSummary().subscribe({
-      next: r => { this.rewards = r.data ?? null; this.loadingRewards = false; this.cdr.markForCheck(); },
-      error: () => { this.loadingRewards = false; this.cdr.markForCheck(); }
+    this.rewardsSvc.getSummary().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: r => {
+        this.rewards = r.data ?? null;
+        this.loadingRewards = false;
+        this.rewardsError = '';
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.loadingRewards = false;
+        this.rewardsError = 'Unable to load rewards right now.';
+        this.cdr.markForCheck();
+      }
     });
-    this.walletSvc.getTransactions(1, 5).subscribe({
+    this.walletSvc.getTransactions(1, 5).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: r => { this.transactions = r.data?.items ?? []; this.loadingTx = false; this.cdr.markForCheck(); },
       error: () => { this.loadingTx = false; this.cdr.markForCheck(); }
     });
@@ -235,3 +252,8 @@ export class DashboardComponent implements OnInit {
     return Math.min((points / max) * 100, 100) + '%';
   }
 }
+
+
+
+
+

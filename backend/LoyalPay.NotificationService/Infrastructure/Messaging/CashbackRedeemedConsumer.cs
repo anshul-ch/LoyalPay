@@ -15,11 +15,17 @@ public class CashbackRedeemedConsumer : IConsumer<CashbackRedeemedEvent>
 
     public async Task Consume(ConsumeContext<CashbackRedeemedEvent> context)
     {
+        var msg = context.Message;
+        var body = $"A cashback reward of INR {msg.CashbackAmount:0.00} has been credited to your wallet."
+            + $"\n||Item:{msg.ItemName}"
+            + $"\n||Cashback Credited:INR {msg.CashbackAmount:0.00}"
+            + $"\n||Date:{DateTime.UtcNow:dd MMM yyyy, HH:mm:ss} UTC";
+
         await _notificationService.CreateAsync(
-            context.Message.UserId,
+            msg.UserId,
             "Rewards",
             "Cashback credited",
-            $"Cashback redemption '{context.Message.ItemName}' credited INR {context.Message.CashbackAmount:0.00} to your wallet.",
+            body,
             DateTime.UtcNow);
     }
 }

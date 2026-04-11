@@ -26,8 +26,8 @@ public class TopUpCompletedConsumer : IConsumer<TopUpCompletedEvent>
             return;
         }
 
-        // Base points: 1 point for every INR 100 topped up.
-        var points = (int)Math.Floor(context.Message.Amount / 100);
+        // Base points: 1 point for every INR 200 topped up.
+        var points = (int)Math.Floor(context.Message.Amount / 200m);
 
         // First top-up bonus: extra 100 points if the user has never earned before.
         var isFirstTopUp = !await _db.RewardTransactions

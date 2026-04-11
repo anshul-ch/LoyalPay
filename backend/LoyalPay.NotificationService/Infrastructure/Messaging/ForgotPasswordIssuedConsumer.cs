@@ -18,8 +18,8 @@ public class ForgotPasswordIssuedConsumer : IConsumer<ForgotPasswordIssuedEvent>
         await _notificationService.CreateAsync(
             context.Message.UserId,
             "Security",
-            "Temporary password issued",
-            $"A temporary password was generated for your account. Temporary password: {context.Message.TemporaryPassword}",
+            "Temporary password generated",
+            $"A temporary password reset request was processed for your account on {context.Message.IssuedAtUtc:yyyy-MM-dd HH:mm:ss} UTC. Temporary password: {context.Message.TemporaryPassword}. For security, sign in immediately and replace this password.",
             context.Message.IssuedAtUtc,
             context.Message.Email,
             context.Message.FullName);

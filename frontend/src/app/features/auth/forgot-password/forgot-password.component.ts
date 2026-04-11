@@ -1,13 +1,14 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
-import { RouterLink, Router } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { ToastService } from '../../../core/services/toast.service';
 
 @Component({
   selector: 'app-forgot-password',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, ReactiveFormsModule, RouterLink],
   template: `
     <div class="min-h-screen bg-gradient-to-br from-brand-navy to-brand-navy-dark flex items-center justify-center p-4">
@@ -56,12 +57,12 @@ import { ToastService } from '../../../core/services/toast.service';
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
               </svg>
             </div>
-            <h2 class="text-xl font-bold text-gray-900">Temporary password generated</h2>
+            <h2 class="text-xl font-bold text-gray-900">Check your email</h2>
             <p class="text-gray-500 text-sm mt-2">
-              Use the temporary password sent to<br/>
+              A temporary password has been sent to<br/>
               <span class="font-medium text-gray-700">{{ form.value.email }}</span>
             </p>
-            <p class="text-xs text-gray-400 mt-3">After login, you must change your password.</p>
+            <p class="text-xs text-gray-400 mt-3">Use it to sign in, then change your password immediately.</p>
           </div>
         }
 
@@ -82,7 +83,12 @@ export class ForgotPasswordComponent {
   sent = false;
   form = this.fb.group({ email: ['', [Validators.required, Validators.email]] });
 
-  constructor(private fb: FormBuilder, private auth: AuthService, private toast: ToastService, private router: Router) {}
+  constructor(
+    private fb: FormBuilder,
+    private auth: AuthService,
+    private toast: ToastService,
+    private cdr: ChangeDetectorRef
+  ) {}
 
   submit(): void {
     if (this.form.invalid) return;
@@ -91,18 +97,19 @@ export class ForgotPasswordComponent {
       next: (res) => {
         this.loading = false;
         if (!res.success) {
-          this.toast.error(res.message || 'Unable to generate temporary password.');
+          this.toast.error(res.message || 'Unable to send temporary password.');
+          this.cdr.markForCheck();
           return;
         }
-
         this.sent = true;
-        if (res.data) {
-          this.toast.info(`Temporary password: ${res.data.replace('Temporary password: ', '')}`);
-        }
-
-        setTimeout(() => this.router.navigate(['/login']), 1200);
+        this.cdr.markForCheck();
       },
-      error: () => { this.loading = false; }
+      error: () => {
+        this.loading = false;
+        this.cdr.markForCheck();
+      }
     });
   }
 }
+
+

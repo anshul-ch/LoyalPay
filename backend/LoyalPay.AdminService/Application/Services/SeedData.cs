@@ -17,7 +17,7 @@ public class SeedData
         admin.FullName = "Super Admin";
         admin.Email = "admin@loyalpay.com";
         admin.Phone = "9000000000";
-        admin.PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123");
+        admin.PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123", workFactor: 10);
         admin.Role = "Admin";
         admin.IsActive = true;
         admin.KycStatus = "Approved";

@@ -32,4 +32,67 @@ public class CampaignController : ControllerBase
         var result = await _adminService.CreateCampaignAsync(dto, GetUserId());
         return Ok(result);
     }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAll()
+    {
+        var result = await _adminService.GetCampaignsAsync();
+        return Ok(result);
+    }
+
+    [HttpPatch("{campaignId}/deactivate")]
+    public async Task<IActionResult> Deactivate(Guid campaignId)
+    {
+        var result = await _adminService.DeactivateCampaignAsync(campaignId, GetUserId());
+        return Ok(result);
+    }
+
+    [HttpPatch("{campaignId}/activate")]
+    public async Task<IActionResult> Activate(Guid campaignId)
+    {
+        var result = await _adminService.ActivateCampaignAsync(campaignId, GetUserId());
+        return Ok(result);
+    }
+
+    [HttpDelete("{campaignId}")]
+    public async Task<IActionResult> Remove(Guid campaignId)
+    {
+        var result = await _adminService.RemoveCampaignAsync(campaignId, GetUserId());
+        return Ok(result);
+    }
+
+    [HttpPost("rewards")]
+    public async Task<IActionResult> CreateReward([FromBody] CreateRewardDto dto)
+    {
+        var result = await _adminService.CreateRewardAsync(dto, GetUserId());
+        return Ok(result);
+    }
+
+    [HttpGet("rewards")]
+    public async Task<IActionResult> GetRewards()
+    {
+        var result = await _adminService.GetRewardsAsync();
+        return Ok(result);
+    }
+
+    [HttpPatch("rewards/{rewardId}/deactivate")]
+    public async Task<IActionResult> DeactivateReward(Guid rewardId)
+    {
+        var result = await _adminService.DeactivateRewardAsync(rewardId, GetUserId());
+        return Ok(result);
+    }
+
+    [HttpPatch("rewards/{rewardId}/activate")]
+    public async Task<IActionResult> ActivateReward(Guid rewardId)
+    {
+        var result = await _adminService.ActivateRewardAsync(rewardId, GetUserId());
+        return Ok(result);
+    }
+
+    [HttpDelete("rewards/{rewardId}")]
+    public async Task<IActionResult> RemoveReward(Guid rewardId)
+    {
+        var result = await _adminService.RemoveRewardAsync(rewardId, GetUserId());
+        return Ok(result);
+    }
 }
