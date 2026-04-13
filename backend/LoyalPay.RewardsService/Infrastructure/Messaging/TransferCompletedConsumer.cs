@@ -31,15 +31,16 @@ public class TransferCompletedConsumer : IConsumer<TransferCompletedEvent>
             return;
         }
 
-        // Do not award points on every transfer: low value transfers get no points.
-        if (amount < 300m)
+        // Do not award points on every transfer: very low value transfers get no points.
+        if (amount < 100m)
         {
             return;
         }
 
-        // Probabilistic awarding to avoid rewarding every single payment.
+        // Probabilistic awarding to avoid rewarding every single payment,
+        // while still awarding frequently enough for a good user experience.
         var random = Random.Shared.Next(100);
-        if (random > 59)
+        if (random > 84)
         {
             return;
         }

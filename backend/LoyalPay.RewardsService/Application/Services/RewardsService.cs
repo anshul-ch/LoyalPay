@@ -33,17 +33,13 @@ public class RewardsService : IRewardsService
     {
         var source = $"{item.Name} {item.Description}";
         var match = Regex.Match(source, @"\d+(?:\.\d{1,2})?");
-        if (!match.Success)
+        if (match.Success && decimal.TryParse(match.Value, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed))
         {
-            return 0m;
+            return Math.Max(0m, parsed);
         }
 
-        if (!decimal.TryParse(match.Value, NumberStyles.Number, CultureInfo.InvariantCulture, out var amount))
-        {
-            return 0m;
-        }
-
-        return Math.Max(0m, amount);
+        // Fallback so cashback rewards created without explicit INR value still apply.
+        return Math.Max(1m, Math.Round(item.PointsCost / 10m, 2));
     }
 
     private static int GetRewardExpiryMonths(int pointsCost)
@@ -167,6 +163,11 @@ public class RewardsService : IRewardsService
             return ApiResponse<string>.Fail("This item is currently unavailable.");
         }
 
+        if (item.ExpiresAt != null && item.ExpiresAt <= DateTime.UtcNow)
+        {
+            return ApiResponse<string>.Fail("This reward has expired.");
+        }
+
         if (account.TotalPoints < item.PointsCost)
         {
             return ApiResponse<string>.Fail("Insufficient points for this redemption.");
@@ -194,6 +195,12 @@ public class RewardsService : IRewardsService
         redemption.PointsSpent = item.PointsCost;
         redemption.CreatedAt = DateTime.UtcNow;
 
+        if (string.Equals(item.ItemType, "Coupon", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(item.ItemType, "Voucher", StringComparison.OrdinalIgnoreCase))
+        {
+            redemption.CouponCode = "LP-" + Guid.NewGuid().ToString("N")[..10].ToUpperInvariant();
+        }
+
         var transaction = new RewardTransaction();
         transaction.UserId = userId;
         transaction.TxnType = "Redemption";
@@ -201,10 +208,13 @@ public class RewardsService : IRewardsService
         transaction.Description = "Redeemed: " + item.Name;
         transaction.CreatedAt = DateTime.UtcNow;
 
+        await _catalogRepository.UpdateCatalogItemAsync(item);
         await _rewardAccountRepository.UpdateRewardAccountAsync(account);
         await _redemptionRepository.AddRedemptionAsync(redemption);
         await _rewardTransactionRepository.AddRewardTransactionAsync(transaction);
         await _rewardAccountRepository.SaveChangesAsync();
+
+        var successMessage = "Redemption successful. Your request is being processed.";
 
         if (string.Equals(item.ItemType, "Cashback", StringComparison.OrdinalIgnoreCase))
         {
@@ -213,14 +223,21 @@ public class RewardsService : IRewardsService
             {
                 await _publishEndpoint.Publish(new CashbackRedeemedEvent(
                     userId,
+                    redemption.RedemptionId,
                     item.ItemId,
                     item.Name,
                     cashbackAmount
                 ));
+
+                successMessage = $"Cashback redemption successful. INR {cashbackAmount:0.00} will be credited to your wallet shortly.";
             }
         }
+        else if (!string.IsNullOrWhiteSpace(redemption.CouponCode))
+        {
+            successMessage = $"Redemption successful. Your code: {redemption.CouponCode}";
+        }
 
-        return ApiResponse<string>.Ok("Redemption successful! Your request is being processed.");
+        return ApiResponse<string>.Ok(successMessage, successMessage);
     }
 
     public async Task<ApiResponse<List<RewardTransactionDto>>> GetHistoryAsync(Guid userId)

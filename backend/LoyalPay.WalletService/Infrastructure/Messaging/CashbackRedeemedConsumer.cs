@@ -44,7 +44,7 @@ public class CashbackRedeemedConsumer : IConsumer<CashbackRedeemedEvent>
         var alreadyCredited = await _db.LedgerEntries.AnyAsync(e =>
             e.WalletId == wallet.WalletId &&
             e.EntryType == "Credit" &&
-            e.Description == $"Cashback redeemed: {context.Message.ItemId}");
+            e.Description == $"Cashback redeemed: {context.Message.RedemptionId}");
 
         if (alreadyCredited)
         {
@@ -60,11 +60,18 @@ public class CashbackRedeemedConsumer : IConsumer<CashbackRedeemedEvent>
             EntryType = "Credit",
             Amount = cashbackAmount,
             BalanceAfter = wallet.Balance,
-            Description = $"Cashback redeemed: {context.Message.ItemId}",
+            Description = $"Cashback redeemed: {context.Message.RedemptionId}",
             CreatedAt = DateTime.UtcNow
         };
 
         _db.LedgerEntries.Add(ledger);
         await _db.SaveChangesAsync();
+
+        await context.Publish(new UserNotificationRequestedEvent(
+            userId,
+            "Rewards",
+            "Cashback credited",
+            $"Cashback of INR {cashbackAmount:0.00} has been successfully credited to your wallet. Redemption reference: {context.Message.RedemptionId}. Item: {context.Message.ItemName}.",
+            DateTime.UtcNow));
     }
 }

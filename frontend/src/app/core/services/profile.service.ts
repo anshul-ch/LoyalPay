@@ -1,10 +1,11 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, shareReplay } from 'rxjs';
+import { Observable, shareReplay, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   ProfileDto, UpdateProfileDto, ChangePasswordDto, KycSubmitDto, KycStatusDto, ApiResponse
 } from '../models/api.models';
+import { AccountLockService } from './account-lock.service';
 
 @Injectable({ providedIn: 'root' })
 export class ProfileService {
@@ -12,10 +13,21 @@ export class ProfileService {
   private kycStatusRequest$?: Observable<ApiResponse<KycStatusDto>>;
   private kycStatusToken = '';
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    private accountLock: AccountLockService
+  ) {}
 
   getProfile(): Observable<ApiResponse<ProfileDto>> {
-    return this.http.get<ApiResponse<ProfileDto>>(`${this.api}/profile`);
+    return this.http.get<ApiResponse<ProfileDto>>(`${this.api}/profile`).pipe(
+      tap(res => {
+        const message = res.message?.toLowerCase() ?? '';
+        if (!res.success && (message.includes('deactivated') || message.includes('inactive') || message.includes('not active'))) {
+          const reason = res.message?.trim() || 'Your account has been deactivated.';
+          this.accountLock.lock(`${reason} Please contact support for account reactivation.`);
+        }
+      })
+    );
   }
 
   updateProfile(dto: UpdateProfileDto): Observable<ApiResponse<ProfileDto>> {

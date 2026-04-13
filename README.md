@@ -115,8 +115,7 @@ Points earned:
 
 Catalog reward expiry:
 
-- Rewards created in admin include expiry (1 to 4 months based on points cost)
-- Expired rewards are removed from catalog data
+- Rewards created include expiry (1 to 4 months based on points cost)
 
 ### Notifications — `/api/notifications/...`
 
@@ -209,14 +208,8 @@ This starts SQL Server on port 1433 and RabbitMQ on ports 5672 / 15672. Database
 
 ### 4 — Run the services
 
-Use scripts (recommended):
 
-```bash
-./startbackend.ps1
-./stopbackend.ps1
-```
-
-Or run manually in separate terminals:
+Run manually in separate terminals:
 
 ```bash
 dotnet run --project backend/LoyalPay.AuthService
@@ -243,21 +236,6 @@ Each service auto-migrates its database on startup — no manual `dotnet ef` com
 
 ---
 
-## Git Ignore Policy
-
-This repository intentionally ignores local/runtime artifacts. Do not commit:
-
-- secrets/config: `.env`, `*.env`, `appsettings*.json`
-- build artifacts: `bin/`, `obj/`, `dist/`, `.angular/`, `node_modules/`
-- local IDE/workspace: `.vs/`, `.idea/`, `*.user`, `*.suo`, `.kiro/`
-- local runtime files: `.loyalpay-service-pids.json`, `*.log`
-- local docs/scripts by current policy: `*.md`, `*.ps1`
-
-Important note:
-
-- This `README.md` and `startbackend.ps1`/`stopbackend.ps1` are present in your current workspace, but with your current `.gitignore` policy they are ignored for future tracking unless you change that policy.
-
----
 
 ## Input Validation
 

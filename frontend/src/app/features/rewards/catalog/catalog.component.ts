@@ -151,19 +151,37 @@ export class CatalogComponent implements OnInit {
   redeem(item: CatalogItemDto): void {
     this.redeeming = item.itemId;
     this.rewardsSvc.redeem({ itemId: item.itemId }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: () => {
+      next: (res) => {
         this.redeeming = null;
-        this.toast.success(`Redeemed "${item.name}" successfully!`);
+
+        if (!res.success) {
+          this.toast.error(res.message || 'Unable to redeem this reward.');
+          this.cdr.markForCheck();
+          return;
+        }
+
+        this.toast.success(res.message || `Redeemed "${item.name}" successfully!`);
         // Refresh summary to update points
         this.rewardsSvc.getSummary().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(r => {
           this.summary = r.data ?? null;
           this.cdr.markForCheck();
         });
+
+        // Refresh catalog to reflect stock/availability changes
+        this.rewardsSvc.getCatalog().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(r => {
+          this.items = (r.data ?? []).filter(i => i.isActive);
+          this.cdr.markForCheck();
+        });
+
         // Refresh wallet in case the redemption affects balance
         this.walletSvc.getBalance().pipe(takeUntilDestroyed(this.destroyRef)).subscribe();
         this.cdr.markForCheck();
       },
-      error: () => { this.redeeming = null; this.cdr.markForCheck(); }
+      error: () => {
+        this.redeeming = null;
+        this.toast.error('Reward redemption failed. Please try again.');
+        this.cdr.markForCheck();
+      }
     });
   }
 }

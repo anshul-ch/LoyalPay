@@ -57,7 +57,6 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<ForgotPasswordIssuedConsumer>();
     x.AddConsumer<TopUpCompletedConsumer>();
     x.AddConsumer<TransferCompletedConsumer>();
-    x.AddConsumer<CashbackRedeemedConsumer>();
     x.AddConsumer<UserNotificationRequestedConsumer>();
     x.AddConsumer<UserStatusChangedConsumer>();
 
@@ -92,11 +91,6 @@ builder.Services.AddMassTransit(x =>
         cfg.ReceiveEndpoint("notification-transfer-completed", e =>
         {
             e.ConfigureConsumer<TransferCompletedConsumer>(context);
-        });
-
-        cfg.ReceiveEndpoint("notification-cashback-redeemed", e =>
-        {
-            e.ConfigureConsumer<CashbackRedeemedConsumer>(context);
         });
 
         cfg.ReceiveEndpoint("notification-user-notification-requested", e =>

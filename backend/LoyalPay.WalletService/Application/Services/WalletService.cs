@@ -62,6 +62,12 @@ public class WalletService : IWalletService
 
     public async Task<ApiResponse<object>> StartTopUpAsync(Guid userId, TopUpDto dto)
     {
+        var user = await _userVerificationRepository.GetByUserIdAsync(userId);
+        if (user == null || !user.IsActive)
+        {
+            return ApiResponse<object>.Fail("Your account is inactive. Top-up is not allowed.");
+        }
+
         var wallet = await _walletRepository.GetWalletByUserIdAsync(userId);
         if (wallet == null)
         {
@@ -123,6 +129,14 @@ public class WalletService : IWalletService
             return ApiResponse<string>.Fail("Already processed.");
         }
 
+        var topUpUser = await _userVerificationRepository.GetByUserIdAsync(topUp.WalletAccount.UserId);
+        if (topUpUser == null || !topUpUser.IsActive)
+        {
+            topUp.Status = "Failed";
+            await _topUpRepository.SaveChangesAsync();
+            return ApiResponse<string>.Fail("Your account is inactive. Top-up cannot be completed.");
+        }
+
         if (!success)
         {
             topUp.Status = "Failed";
@@ -157,6 +171,17 @@ public class WalletService : IWalletService
 
     public async Task<ApiResponse<string>> TransferAsync(Guid senderUserId, TransferDto dto)
     {
+        var senderUser = await _userVerificationRepository.GetByUserIdAsync(senderUserId);
+        if (senderUser == null || !senderUser.IsActive)
+        {
+            return ApiResponse<string>.Fail("Your account is inactive. Transfer is not allowed.");
+        }
+
+        if (!string.Equals(senderUser.KycStatus, "Approved", StringComparison.OrdinalIgnoreCase))
+        {
+            return ApiResponse<string>.Fail("Your KYC is not approved. Transfer is not allowed.");
+        }
+
         var senderWallet = await _walletRepository.GetWalletByUserIdAsync(senderUserId);
         if (senderWallet == null)
         {
