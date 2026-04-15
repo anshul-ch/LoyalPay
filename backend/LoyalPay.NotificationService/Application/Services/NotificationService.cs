@@ -63,7 +63,8 @@ public class NotificationService : INotificationService
             var profile = await _userProfileRepository.GetByUserIdAsync(userId);
             if (!string.IsNullOrWhiteSpace(profile?.Email))
             {
-                await _emailSender.SendAsync(profile.Email, profile.FullName, title, message);
+                var emailSubject = BuildEmailSubject(category, title);
+                await _emailSender.SendAsync(profile.Email, profile.FullName, emailSubject, message);
             }
         }
         catch (Exception ex)
@@ -125,5 +126,55 @@ public class NotificationService : INotificationService
         }
 
         return ApiResponse<string>.Ok("Notification marked as read.");
+    }
+
+    private static string BuildEmailSubject(string? category, string? title)
+    {
+        var cleanTitle = string.IsNullOrWhiteSpace(title)
+            ? "Notification"
+            : title.Trim();
+
+        var combined = $"{category} {cleanTitle}".ToLowerInvariant();
+
+        if (combined.Contains("temporary password")
+            || combined.Contains("password reset")
+            || combined.Contains("forgot password"))
+        {
+            return "LoyalPay Security: Temporary Password";
+        }
+
+        if (combined.Contains("sign-in")
+            || combined.Contains("sign in")
+            || combined.Contains("login")
+            || combined.Contains("logged in"))
+        {
+            return "LoyalPay Security: Sign-In Alert";
+        }
+
+        if (combined.Contains("transaction")
+            || combined.Contains("transfer")
+            || combined.Contains("top-up")
+            || combined.Contains("wallet")
+            || combined.Contains("payment"))
+        {
+            return "LoyalPay Payments: Transaction Update";
+        }
+
+        if (combined.Contains("account") && combined.Contains("created"))
+        {
+            return "LoyalPay Account: Successfully Created";
+        }
+
+        if (combined.Contains("inactive"))
+        {
+            return "LoyalPay Account: Marked Inactive";
+        }
+
+        if (combined.Contains("reactivated") || combined.Contains("active"))
+        {
+            return "LoyalPay Account: Reactivated";
+        }
+
+        return $"LoyalPay Alert: {cleanTitle}";
     }
 }

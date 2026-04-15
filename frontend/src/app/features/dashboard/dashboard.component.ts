@@ -1,4 +1,4 @@
-﻿﻿import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, DestroyRef, inject } from '@angular/core';
+﻿import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, DestroyRef, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
@@ -175,7 +175,7 @@ import { ProfileService } from '../../core/services/profile.service';
                   </div>
                   
                   <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden shadow-inner">
-                    <div class="bg-gradient-to-r from-brand-orange to-brand-yellow h-full rounded-full transition-all duration-1000 ease-out" 
+                    <div class="bg-gradient-to-r from-blue-500 to-cyan-400 h-full rounded-full transition-all duration-1000 ease-out" 
                          [style.width]="calcProgress(rewards.totalPoints)"></div>
                   </div>
                   <p class="text-xs font-medium text-gray-500 mt-3 text-center">{{ rewards.tierProgress }}</p>

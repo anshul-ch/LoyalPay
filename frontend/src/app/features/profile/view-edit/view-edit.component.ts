@@ -1,4 +1,4 @@
-﻿﻿import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, DestroyRef, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, DestroyRef, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
@@ -64,7 +64,7 @@ import { AuthService } from '../../../core/services/auth.service';
           <div class="lg:col-span-4 space-y-6">
             <div class="bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 group transition hover:shadow-xl">
               <!-- Banner Cover -->
-              <div class="h-32 bg-gradient-to-tr from-brand-orange to-brand-red relative">
+              <div class="h-32 bg-gradient-to-tr from-cyan-400 to-indigo-600 relative">
                 <div class="absolute inset-0 opacity-20 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white to-transparent"></div>
               </div>
               
@@ -133,7 +133,7 @@ import { AuthService } from '../../../core/services/auth.service';
                 <p class="text-4xl font-extrabold mt-3 tracking-tight">{{ rewards.totalPoints | number }}</p>
                 
                 <div class="flex items-center justify-between mt-6 pt-4 border-t border-white/10">
-                  <span class="px-3 py-1.5 bg-gradient-to-r from-brand-orange to-brand-red rounded-lg text-xs font-black uppercase tracking-wider shadow-md">{{ rewards.tier }}</span>
+                  <span class="px-3 py-1.5 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-lg text-xs font-black uppercase tracking-wider shadow-md">{{ rewards.tier }}</span>
                   <a routerLink="/rewards" class="text-xs text-white/70 hover:text-white font-bold transition flex items-center gap-1 group-hover:translate-x-1">
                     Explore rewards
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

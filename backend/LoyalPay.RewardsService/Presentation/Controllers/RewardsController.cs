@@ -34,10 +34,9 @@ public class RewardsController : ControllerBase
     }
 
     [HttpGet("catalog")]
-    [AllowAnonymous]
     public async Task<IActionResult> Catalog()
     {
-        var result = await _rewardsService.GetCatalogAsync();
+        var result = await _rewardsService.GetCatalogAsync(GetUserId());
         return Ok(result);
     }
 

@@ -83,7 +83,7 @@ const TIERS: TierInfo[] = [
                 </div>
                 <div class="w-full bg-white/10 rounded-full h-2.5 overflow-hidden">
                   <div class="h-full rounded-full transition-all duration-1000"
-                    style="background: linear-gradient(90deg, #F77F00, #FCBF49)"
+                    style="background: linear-gradient(90deg, #3B82F6, #6366F1)"
                     [style.width]="progressPercent + '%'"></div>
                 </div>
                 <div class="flex justify-between text-xs text-blue-300/60 mt-1">

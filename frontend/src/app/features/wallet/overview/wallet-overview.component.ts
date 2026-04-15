@@ -1,4 +1,4 @@
-﻿import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, DestroyRef, inject } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, DestroyRef, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
@@ -42,7 +42,7 @@ import { CurrencyInrPipe } from '../../../shared/pipes/currency-inr.pipe';
             
             <div class="grid grid-cols-2 gap-4">
               <a routerLink="/wallet/topup"
-                class="flex flex-col items-center justify-center gap-3 p-4 rounded-2xl bg-gradient-to-br from-brand-orange to-red-500 text-white shadow-lg shadow-brand-orange/20 hover:scale-[1.03] transition-transform group">
+                class="flex flex-col items-center justify-center gap-3 p-4 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30 hover:scale-[1.03] transition-transform group">
                 <svg class="w-6 h-6 group-hover:-translate-y-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
                 </svg>
@@ -50,7 +50,7 @@ import { CurrencyInrPipe } from '../../../shared/pipes/currency-inr.pipe';
               </a>
               
               <a [routerLink]="kycApproved ? '/wallet/transfer' : '/profile/kyc'"
-                class="flex flex-col items-center justify-center gap-3 p-4 rounded-2xl bg-gradient-to-br from-brand-orange to-red-500 text-white shadow-lg shadow-brand-orange/25 hover:scale-[1.03] transition-all group ring-2 ring-orange-200/40">
+                class="flex flex-col items-center justify-center gap-3 p-4 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30 hover:scale-[1.03] transition-all group ring-2 ring-indigo-200/40">
                 <svg class="w-6 h-6 text-brand-navy group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
                 </svg>

@@ -25,25 +25,7 @@ public class TransferCompletedConsumer : IConsumer<TransferCompletedEvent>
             return;
         }
 
-        var points = (int)Math.Floor(amount / 100m);
-        if (points <= 0)
-        {
-            return;
-        }
-
-        // Do not award points on every transfer: very low value transfers get no points.
-        if (amount < 100m)
-        {
-            return;
-        }
-
-        // Probabilistic awarding to avoid rewarding every single payment,
-        // while still awarding frequently enough for a good user experience.
-        var random = Random.Shared.Next(100);
-        if (random > 84)
-        {
-            return;
-        }
+        var points = amount < 100m ? 0 : (int)Math.Floor(amount / 100m);
 
         var account = await _db.RewardAccounts.FirstOrDefaultAsync(r => r.UserId == userId);
         if (account == null)
@@ -61,28 +43,77 @@ public class TransferCompletedConsumer : IConsumer<TransferCompletedEvent>
             await _db.SaveChangesAsync();
         }
 
-        var exists = await _db.RewardTransactions.AnyAsync(t =>
-            t.UserId == userId &&
-            t.TxnType == "Earned" &&
-            t.Description == $"+{points} pts for transfer #{context.Message.TransferId}");
+        var activeCampaigns = await _db.Campaigns
+            .Where(c => c.IsActive && c.StartDate <= DateTime.UtcNow && c.EndDate >= DateTime.UtcNow)
+            .ToListAsync();
 
-        if (exists)
+        if (points <= 0 && activeCampaigns.Count == 0)
         {
             return;
         }
 
-        account.TotalPoints += points;
+        var totalAwardedPoints = 0;
+
+        if (points > 0)
+        {
+            var exists = await _db.RewardTransactions.AnyAsync(t =>
+                t.UserId == userId &&
+                t.TxnType == "Earned" &&
+                t.Description == $"+{points} pts for transfer #{context.Message.TransferId}");
+
+            if (!exists)
+            {
+                _db.RewardTransactions.Add(new RewardTransaction
+                {
+                    UserId = userId,
+                    TxnType = "Earned",
+                    Points = points,
+                    Description = $"+{points} pts for transfer #{context.Message.TransferId}",
+                    CreatedAt = DateTime.UtcNow
+                });
+
+                totalAwardedPoints += points;
+            }
+        }
+
+        foreach (var campaign in activeCampaigns)
+        {
+            if (campaign.BonusPoints <= 0)
+            {
+                continue;
+            }
+
+            var campaignDescription = $"Campaign transfer bonus [{campaign.CampaignId}]";
+            var campaignAlreadyAwarded = await _db.RewardTransactions.AnyAsync(t =>
+                t.UserId == userId &&
+                t.TxnType == "Earned" &&
+                t.Description == campaignDescription);
+
+            if (campaignAlreadyAwarded)
+            {
+                continue;
+            }
+
+            _db.RewardTransactions.Add(new RewardTransaction
+            {
+                UserId = userId,
+                TxnType = "Earned",
+                Points = campaign.BonusPoints,
+                Description = campaignDescription,
+                CreatedAt = DateTime.UtcNow
+            });
+
+            totalAwardedPoints += campaign.BonusPoints;
+        }
+
+        if (totalAwardedPoints <= 0)
+        {
+            return;
+        }
+
+        account.TotalPoints += totalAwardedPoints;
         account.Tier = GetTier(account.TotalPoints);
         account.UpdatedAt = DateTime.UtcNow;
-
-        _db.RewardTransactions.Add(new RewardTransaction
-        {
-            UserId = userId,
-            TxnType = "Earned",
-            Points = points,
-            Description = $"+{points} pts for transfer #{context.Message.TransferId}",
-            CreatedAt = DateTime.UtcNow
-        });
 
         await _db.SaveChangesAsync();
     }

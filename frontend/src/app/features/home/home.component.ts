@@ -46,7 +46,7 @@ import { RouterLink } from '@angular/router';
           </div>
           <h1 class="text-4xl lg:text-6xl font-extrabold text-white leading-tight mb-6">
             Your Wallet.<br/>
-            <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-yellow via-brand-orange to-brand-red">
+            <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 drop-shadow-[0_0_15px_rgba(59,130,246,0.5)]">
               Your Rewards.
             </span><br/>
             All in One Place.
@@ -162,7 +162,7 @@ import { RouterLink } from '@angular/router';
 
       <!-- CTA -->
       <section class="container mx-auto px-6 py-16 relative z-10">
-        <div class="max-w-3xl mx-auto bg-gradient-to-r from-brand-orange to-brand-red rounded-3xl p-12 text-center shadow-2xl">
+        <div class="max-w-3xl mx-auto bg-gradient-to-r from-blue-600 to-indigo-800 rounded-3xl p-12 text-center shadow-[0_0_40px_-10px_rgba(59,130,246,0.6)]">
           <h2 class="text-3xl font-bold text-white mb-4">Ready to get started?</h2>
           <p class="text-white/90 mb-8">Join thousands of users managing their finances smarter.</p>
           <a routerLink="/signup" class="inline-block px-8 py-4 bg-white text-brand-orange font-bold text-base rounded-xl hover:scale-105 transition-all shadow-lg">

@@ -12,6 +12,9 @@ namespace LoyalPay.RewardsService.Application.Services;
 
 public class RewardsService : IRewardsService
 {
+    private const int LowerPointsEligibilityPercent = 50;
+    private const int HigherPointsEligibilityPercent = 25;
+    private const int HigherPointsThreshold = 1000;
     private readonly IRewardAccountRepository _rewardAccountRepository;
     private readonly ICatalogItemRepository _catalogRepository;
     private readonly IRedemptionRepository _redemptionRepository;
@@ -92,6 +95,34 @@ public class RewardsService : IRewardsService
         return (1000 - points) + " more points to reach Gold";
     }
 
+    private static int GetDeterministicBucket(Guid userId, Guid itemId)
+    {
+        var userBytes = userId.ToByteArray();
+        var itemBytes = itemId.ToByteArray();
+
+        var hash = 17;
+        for (var i = 0; i < 16; i++)
+        {
+            hash = (hash * 31) + userBytes[i] + itemBytes[15 - i];
+        }
+
+        return Math.Abs(hash % 100);
+    }
+
+    private static int GetDeterministicRank(Guid userId, Guid itemId)
+    {
+        var userBytes = userId.ToByteArray();
+        var itemBytes = itemId.ToByteArray();
+
+        var hash = 23;
+        for (var i = 0; i < 16; i++)
+        {
+            hash = (hash * 37) + userBytes[i] + itemBytes[i];
+        }
+
+        return Math.Abs(hash);
+    }
+
     public async Task<ApiResponse<RewardSummaryDto>> GetSummaryAsync(Guid userId)
     {
         var account = await _rewardAccountRepository.GetRewardAccountByUserIdAsync(userId);
@@ -111,8 +142,13 @@ public class RewardsService : IRewardsService
         return ApiResponse<RewardSummaryDto>.Ok(summary);
     }
 
-    public async Task<ApiResponse<List<CatalogItemDto>>> GetCatalogAsync()
+    public async Task<ApiResponse<List<CatalogItemDto>>> GetCatalogAsync(Guid userId)
     {
+        if (userId == Guid.Empty)
+        {
+            return ApiResponse<List<CatalogItemDto>>.Fail("Invalid user.");
+        }
+
         await RemoveExpiredRewardsAsync();
 
         var items = await _catalogRepository.GetAllCatalogItemsAsync();
@@ -130,7 +166,28 @@ public class RewardsService : IRewardsService
             await _catalogRepository.SaveChangesAsync();
         }
 
-        var catalog = items.Select(item => new CatalogItemDto
+        var eligibleItems = items
+            .Where(item => item.IsActive)
+            .Where(item =>
+            {
+                var eligibilityPercent = item.PointsCost > HigherPointsThreshold
+                    ? HigherPointsEligibilityPercent
+                    : LowerPointsEligibilityPercent;
+
+                return GetDeterministicBucket(userId, item.ItemId) < eligibilityPercent;
+            })
+            .ToList();
+
+        if (eligibleItems.Count == 0 && items.Count > 0)
+        {
+            eligibleItems = items
+                .Where(item => item.IsActive)
+                .OrderBy(item => GetDeterministicRank(userId, item.ItemId))
+                .Take(Math.Min(3, items.Count))
+                .ToList();
+        }
+
+        var catalog = eligibleItems.Select(item => new CatalogItemDto
         {
             ItemId = item.ItemId,
             Name = item.Name,

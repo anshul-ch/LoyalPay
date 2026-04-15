@@ -228,11 +228,6 @@ public class WalletService : IWalletService
             return ApiResponse<string>.Fail("Receiver account is not active.");
         }
 
-        if (!string.Equals(receiverUser.KycStatus, "Approved", StringComparison.OrdinalIgnoreCase))
-        {
-            return ApiResponse<string>.Fail("Receiver KYC is not approved. Transfer is not allowed.");
-        }
-
         if (dto.Amount <= 0)
         {
             return ApiResponse<string>.Fail("Transfer amount must be greater than zero.");

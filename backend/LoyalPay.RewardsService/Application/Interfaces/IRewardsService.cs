@@ -7,7 +7,7 @@ public interface IRewardsService
 {
     Task<ApiResponse<RewardSummaryDto>> GetSummaryAsync(Guid userId);
 
-    Task<ApiResponse<List<CatalogItemDto>>> GetCatalogAsync();
+    Task<ApiResponse<List<CatalogItemDto>>> GetCatalogAsync(Guid userId);
 
     /// <summary>
     /// Debits points and records redemption/transaction entries in one operation.

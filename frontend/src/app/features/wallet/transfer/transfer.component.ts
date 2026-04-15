@@ -193,13 +193,6 @@ export class TransferComponent {
             return;
           }
 
-          const status = (res.data.kycStatus ?? '').toLowerCase();
-          if (status !== 'approved') {
-            this.transferError = 'Recipient KYC is not approved. Transfer is not allowed.';
-            this.cdr.markForCheck();
-            return;
-          }
-
           this.receiver = res.data;
           this.step = 2;
         } else {
