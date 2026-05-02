@@ -13,6 +13,7 @@ public class AuthService : IAuthService
     private readonly IUserRepository _userRepository;
     private readonly IRefreshTokenRepository _refreshTokenRepository;
     private readonly IKycSubmissionRepository _kycSubmissionRepository;
+    private readonly ISupportTicketRepository _ticketRepository;
     private readonly IJwtHelper _jwtHelper;
     private readonly IPublishEndpoint _publishEndpoint;
 
@@ -20,12 +21,14 @@ public class AuthService : IAuthService
         IUserRepository userRepository,
         IRefreshTokenRepository refreshTokenRepository,
         IKycSubmissionRepository kycSubmissionRepository,
+        ISupportTicketRepository ticketRepository,
         IJwtHelper jwtHelper,
         IPublishEndpoint publishEndpoint)
     {
         _userRepository = userRepository;
         _refreshTokenRepository = refreshTokenRepository;
         _kycSubmissionRepository = kycSubmissionRepository;
+        _ticketRepository = ticketRepository;
         _jwtHelper = jwtHelper;
         _publishEndpoint = publishEndpoint;
     }
@@ -46,6 +49,17 @@ public class AuthService : IAuthService
             _ => status
         };
     }
+
+    private static string GetTicketPriority(string category) => category switch
+    {
+        "AccountAccess" => "High",
+        "PinReset" => "High",
+        "PaymentIssue" => "High",
+        "TransactionDispute" => "High",
+        "KycProblem" => "Medium",
+        "Rewards" => "Low",
+        _ => "Medium"
+    };
 
     /// <summary>
     /// Creates a fresh access + refresh token pair and persists the refresh token.
@@ -251,8 +265,6 @@ public class AuthService : IAuthService
             tempPassword,
             DateTime.UtcNow));
 
-        // Temp password is delivered exclusively via email through the notification service.
-
         return ApiResponse<string>.Ok(safeMessage);
     }
 
@@ -275,7 +287,8 @@ public class AuthService : IAuthService
             user.KycDocumentType,
             user.InactiveReason,
             user.IsActive,
-            user.CreatedAt
+            user.CreatedAt,
+            HasPin = !string.IsNullOrEmpty(user.TransactionPinHash)
         };
 
         return ApiResponse<object>.Ok(data);
@@ -478,5 +491,339 @@ public class AuthService : IAuthService
             user.FullName,
             user.Email
         });
+    }
+
+    // ── Transaction PIN ────────────────────────────────────────────────────────
+
+    public async Task<ApiResponse<string>> SetTransactionPinAsync(Guid userId, string pin)
+    {
+        var user = await _userRepository.GetUserByIdAsync(userId);
+        if (user == null)
+            return ApiResponse<string>.Fail("User not found.");
+
+        if (!string.IsNullOrEmpty(user.TransactionPinHash))
+            return ApiResponse<string>.Fail("Transaction PIN is already set. Contact support if you need a reset.");
+
+        if (string.IsNullOrWhiteSpace(pin) || pin.Length != 5 || !pin.All(char.IsDigit))
+            return ApiResponse<string>.Fail("PIN must be exactly 5 digits.");
+
+        user.TransactionPinHash = BCrypt.Net.BCrypt.HashPassword(pin, workFactor: 10);
+        await _userRepository.SaveChangesAsync();
+
+        return ApiResponse<string>.Ok("Transaction PIN set successfully.");
+    }
+
+    public async Task<ApiResponse<bool>> VerifyTransactionPinAsync(Guid userId, string pin)
+    {
+        var user = await _userRepository.GetUserByIdAsync(userId);
+        if (user == null)
+            return ApiResponse<bool>.Fail("User not found.");
+
+        if (string.IsNullOrEmpty(user.TransactionPinHash))
+            return ApiResponse<bool>.Ok(false, "No PIN set.");
+
+        var valid = BCrypt.Net.BCrypt.Verify(pin, user.TransactionPinHash);
+        return ApiResponse<bool>.Ok(valid, valid ? "PIN verified." : "Incorrect PIN.");
+    }
+
+    public async Task<ApiResponse<bool>> GetPinStatusAsync(Guid userId)
+    {
+        var user = await _userRepository.GetUserByIdAsync(userId);
+        if (user == null)
+            return ApiResponse<bool>.Fail("User not found.");
+
+        return ApiResponse<bool>.Ok(!string.IsNullOrEmpty(user.TransactionPinHash));
+    }
+
+    public async Task<ApiResponse<string>> ResetTransactionPinAsync(Guid supportUserId, ResetUserPinDto dto)
+    {
+        // Validate support user
+        var supportUser = await _userRepository.GetUserByIdAsync(supportUserId);
+        if (supportUser == null || supportUser.Role != "Support")
+            return ApiResponse<string>.Fail("Unauthorized.");
+
+        // Validate the PIN reset ticket
+        var ticket = await _ticketRepository.GetByIdAsync(dto.TicketId);
+        if (ticket == null)
+            return ApiResponse<string>.Fail("Ticket not found.");
+
+        if (ticket.UserId != dto.UserId)
+            return ApiResponse<string>.Fail("Ticket does not match the user.");
+
+        if (ticket.Category != "PinReset")
+            return ApiResponse<string>.Fail("This ticket is not a PIN reset request.");
+
+        if (ticket.Status == "Resolved" || ticket.Status == "Closed")
+            return ApiResponse<string>.Fail("This ticket is already resolved.");
+
+        if (string.IsNullOrWhiteSpace(dto.NewPin) || dto.NewPin.Length != 5 || !dto.NewPin.All(char.IsDigit))
+            return ApiResponse<string>.Fail("New PIN must be exactly 5 digits.");
+
+        // Reset the PIN
+        var user = await _userRepository.GetUserByIdAsync(dto.UserId);
+        if (user == null)
+            return ApiResponse<string>.Fail("Target user not found.");
+
+        user.TransactionPinHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPin, workFactor: 10);
+
+        // Resolve the ticket
+        ticket.Status = "Resolved";
+        ticket.Resolution = "Transaction PIN reset by support agent.";
+        ticket.ResolvedAt = DateTime.UtcNow;
+        ticket.UpdatedAt = DateTime.UtcNow;
+
+        await _userRepository.SaveChangesAsync();
+        await _ticketRepository.SaveChangesAsync();
+
+        // Notify user via email
+        await _publishEndpoint.Publish(new SupportTicketUpdatedEvent(
+            ticket.TicketId,
+            ticket.TicketNumber,
+            ticket.UserId,
+            user.Email,
+            user.FullName,
+            ticket.Category,
+            ticket.Subject,
+            "Resolved",
+            ticket.Resolution,
+            supportUserId,
+            DateTime.UtcNow));
+
+        return ApiResponse<string>.Ok("Transaction PIN reset successfully and ticket resolved.");
+    }
+
+    // ── Support Tickets ────────────────────────────────────────────────────────
+
+    public async Task<ApiResponse<object>> CreateTicketAsync(Guid userId, CreateTicketDto dto)
+    {
+        var user = await _userRepository.GetUserByIdAsync(userId);
+        if (user == null)
+            return ApiResponse<object>.Fail("User not found.");
+
+        var ticketNumber = await _ticketRepository.GetNextTicketNumberAsync();
+
+        var ticket = new SupportTicket
+        {
+            TicketNumber = $"LP-{ticketNumber:D5}",
+            UserId = userId,
+            Category = dto.Category,
+            Subject = dto.Subject.Trim(),
+            Description = dto.Description.Trim(),
+            Status = "Open",
+            Priority = GetTicketPriority(dto.Category),
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        await _ticketRepository.AddAsync(ticket);
+        await _ticketRepository.SaveChangesAsync();
+
+        var result = new
+        {
+            ticket.TicketId,
+            ticket.TicketNumber,
+            ticket.Category,
+            ticket.Subject,
+            ticket.Description,
+            ticket.Status,
+            ticket.Priority,
+            ticket.CreatedAt
+        };
+
+        return ApiResponse<object>.Ok(result, "Support ticket created successfully.");
+    }
+
+    public async Task<ApiResponse<object>> GetMyTicketsAsync(Guid userId)
+    {
+        var tickets = await _ticketRepository.GetByUserIdAsync(userId);
+
+        var data = tickets.Select(t => new
+        {
+            t.TicketId,
+            t.TicketNumber,
+            t.Category,
+            t.Subject,
+            t.Status,
+            t.Priority,
+            t.Resolution,
+            t.CreatedAt,
+            t.UpdatedAt,
+            t.ResolvedAt
+        }).ToList();
+
+        return ApiResponse<object>.Ok(data);
+    }
+
+    public async Task<ApiResponse<object>> GetAllTicketsAsync(int page, int size, string? status, string? category, Guid? assignedTo)
+    {
+        if (page < 1) page = 1;
+        if (size < 1) size = 20;
+
+        var tickets = await _ticketRepository.GetAllAsync(page, size, status, category, assignedTo);
+        var total = await _ticketRepository.GetTotalCountAsync(status, category, assignedTo);
+
+        var data = tickets.Select(t => new
+        {
+            t.TicketId,
+            t.TicketNumber,
+            t.Category,
+            t.Subject,
+            t.Status,
+            t.Priority,
+            t.AssignedToUserId,
+            t.Resolution,
+            t.CreatedAt,
+            t.UpdatedAt,
+            t.ResolvedAt,
+            User = t.User == null ? null : new { t.User.UserId, t.User.FullName, t.User.Email }
+        }).ToList();
+
+        return ApiResponse<object>.Ok(new
+        {
+            Items = data,
+            Total = total,
+            Page = page,
+            Size = size,
+            TotalPages = (int)Math.Ceiling(total / (double)size)
+        });
+    }
+
+    public async Task<ApiResponse<object>> GetTicketByIdAsync(Guid ticketId)
+    {
+        var ticket = await _ticketRepository.GetByIdAsync(ticketId);
+        if (ticket == null)
+            return ApiResponse<object>.Fail("Ticket not found.");
+
+        var data = new
+        {
+            ticket.TicketId,
+            ticket.TicketNumber,
+            ticket.Category,
+            ticket.Subject,
+            ticket.Description,
+            ticket.Status,
+            ticket.Priority,
+            ticket.AssignedToUserId,
+            ticket.Resolution,
+            ticket.CreatedAt,
+            ticket.UpdatedAt,
+            ticket.ResolvedAt,
+            User = ticket.User == null ? null : new { ticket.User.UserId, ticket.User.FullName, ticket.User.Email }
+        };
+
+        return ApiResponse<object>.Ok(data);
+    }
+
+    public async Task<ApiResponse<string>> UpdateTicketAsync(Guid ticketId, UpdateTicketDto dto, Guid agentUserId)
+    {
+        var ticket = await _ticketRepository.GetByIdAsync(ticketId);
+        if (ticket == null)
+            return ApiResponse<string>.Fail("Ticket not found.");
+
+        var validStatuses = new[] { "Open", "InProgress", "Resolved", "Closed" };
+        if (!validStatuses.Contains(dto.Status))
+            return ApiResponse<string>.Fail("Invalid status.");
+
+        var prevStatus = ticket.Status;
+        ticket.Status = dto.Status;
+        ticket.UpdatedAt = DateTime.UtcNow;
+
+        if (!string.IsNullOrWhiteSpace(dto.Resolution))
+            ticket.Resolution = dto.Resolution.Trim();
+
+        if (dto.Status == "Resolved" && ticket.ResolvedAt == null)
+            ticket.ResolvedAt = DateTime.UtcNow;
+
+        await _ticketRepository.SaveChangesAsync();
+
+        // If resolved, send email notification to user
+        if (dto.Status == "Resolved" && prevStatus != "Resolved")
+        {
+            var user = await _userRepository.GetUserByIdAsync(ticket.UserId);
+            if (user != null)
+            {
+                await _publishEndpoint.Publish(new SupportTicketUpdatedEvent(
+                    ticket.TicketId,
+                    ticket.TicketNumber,
+                    ticket.UserId,
+                    user.Email,
+                    user.FullName,
+                    ticket.Category,
+                    ticket.Subject,
+                    dto.Status,
+                    ticket.Resolution,
+                    agentUserId,
+                    DateTime.UtcNow));
+            }
+        }
+
+        return ApiResponse<string>.Ok("Ticket updated successfully.");
+    }
+
+    public async Task<ApiResponse<string>> AssignTicketAsync(Guid ticketId, Guid supportAgentId, Guid adminUserId)
+    {
+        var ticket = await _ticketRepository.GetByIdAsync(ticketId);
+        if (ticket == null)
+            return ApiResponse<string>.Fail("Ticket not found.");
+
+        var agent = await _userRepository.GetUserByIdAsync(supportAgentId);
+        if (agent == null || agent.Role != "Support")
+            return ApiResponse<string>.Fail("Invalid support agent.");
+
+        ticket.AssignedToUserId = supportAgentId;
+        ticket.Status = ticket.Status == "Open" ? "InProgress" : ticket.Status;
+        ticket.UpdatedAt = DateTime.UtcNow;
+
+        await _ticketRepository.SaveChangesAsync();
+
+        return ApiResponse<string>.Ok($"Ticket assigned to {agent.FullName}.");
+    }
+
+    // ── Support Agent Management ───────────────────────────────────────────────
+
+    public async Task<ApiResponse<string>> CreateSupportAgentAsync(CreateSupportAgentDto dto, Guid adminUserId)
+    {
+        var exists = await _userRepository.UserExistsAsync(dto.Email);
+        if (exists)
+            return ApiResponse<string>.Fail("An account with this email already exists.");
+
+        var phoneExists = await _userRepository.PhoneExistsAsync(dto.Phone);
+        if (phoneExists)
+            return ApiResponse<string>.Fail("An account with this phone number already exists.");
+
+        var agent = new User
+        {
+            FullName = dto.FullName,
+            Email = dto.Email,
+            Phone = dto.Phone,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password, workFactor: 10),
+            Role = "Support",
+            IsActive = true,
+            KycStatus = "Approved"
+        };
+
+        await _userRepository.AddUserAsync(agent);
+        await _userRepository.SaveChangesAsync();
+
+        return ApiResponse<string>.Ok($"Support agent '{dto.FullName}' created successfully.");
+    }
+
+    public async Task<ApiResponse<object>> GetSupportAgentsAsync()
+    {
+        // We need all Support-role users — extend user repo inline via a simple query
+        // Since IUserRepository doesn't have GetByRole, we'll add a direct call
+        var agents = await _userRepository.GetUsersByRoleAsync("Support");
+
+        var data = agents.Select(a => new
+        {
+            a.UserId,
+            a.FullName,
+            a.Email,
+            a.Phone,
+            a.IsActive,
+            a.CreatedAt
+        }).ToList();
+
+        return ApiResponse<object>.Ok(data);
     }
 }

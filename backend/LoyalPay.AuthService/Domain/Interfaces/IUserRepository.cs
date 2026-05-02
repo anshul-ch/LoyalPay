@@ -10,5 +10,6 @@ public interface IUserRepository
     Task<bool> PhoneExistsAsync(string phone);
     Task AddUserAsync(User user);
     Task UpdateUserAsync(User user);
+    Task<List<User>> GetUsersByRoleAsync(string role);
     Task SaveChangesAsync();
 }

@@ -57,4 +57,34 @@ public interface IAuthService
     /// Resolves an email address to a userId — used by the transfer flow.
     /// </summary>
     Task<ApiResponse<object>> LookupUserByEmailAsync(string email);
+
+    // ── Transaction PIN ──────────────────────────────────────────
+
+    /// <summary>One-time PIN setup. Returns error if PIN already exists.</summary>
+    Task<ApiResponse<string>> SetTransactionPinAsync(Guid userId, string pin);
+
+    /// <summary>Verify the 5-digit PIN. Returns { valid: bool }.</summary>
+    Task<ApiResponse<bool>> VerifyTransactionPinAsync(Guid userId, string pin);
+
+    /// <summary>Returns { hasPin: bool } for the current user.</summary>
+    Task<ApiResponse<bool>> GetPinStatusAsync(Guid userId);
+
+    /// <summary>
+    /// Resets PIN — Support-only. Requires an open PinReset ticket for the target user.
+    /// </summary>
+    Task<ApiResponse<string>> ResetTransactionPinAsync(Guid supportUserId, ResetUserPinDto dto);
+
+    // ── Support Tickets ──────────────────────────────────────────
+
+    Task<ApiResponse<object>> CreateTicketAsync(Guid userId, CreateTicketDto dto);
+    Task<ApiResponse<object>> GetMyTicketsAsync(Guid userId);
+    Task<ApiResponse<object>> GetAllTicketsAsync(int page, int size, string? status, string? category, Guid? assignedTo);
+    Task<ApiResponse<object>> GetTicketByIdAsync(Guid ticketId);
+    Task<ApiResponse<string>> UpdateTicketAsync(Guid ticketId, UpdateTicketDto dto, Guid agentUserId);
+    Task<ApiResponse<string>> AssignTicketAsync(Guid ticketId, Guid supportAgentId, Guid adminUserId);
+
+    // ── Support Agent Management ─────────────────────────────────
+
+    Task<ApiResponse<string>> CreateSupportAgentAsync(CreateSupportAgentDto dto, Guid adminUserId);
+    Task<ApiResponse<object>> GetSupportAgentsAsync();
 }

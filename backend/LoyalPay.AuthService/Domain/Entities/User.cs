@@ -37,7 +37,7 @@ public class User
 
     [Required]
     [MaxLength(50)]
-    public string KycStatus { get; set; } = "Pending";
+    public string KycStatus { get; set; } = "NotSubmitted";
 
     [MaxLength(100)]
     public string? KycDocumentType { get; set; }
@@ -51,4 +51,11 @@ public class User
     public DateTime? KycReviewedAt { get; set; }
 
     public DateTime CreatedAt { get; set; }
+
+    /// <summary>
+    /// BCrypt-hashed 5-digit transaction PIN. Null until the user sets one.
+    /// Once set, can only be reset by a Support agent after a valid PIN-reset ticket.
+    /// </summary>
+    [MaxLength(100)]
+    public string? TransactionPinHash { get; set; }
 }

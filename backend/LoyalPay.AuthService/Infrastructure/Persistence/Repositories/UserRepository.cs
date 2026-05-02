@@ -44,6 +44,14 @@ public class UserRepository : IUserRepository
         _db.Users.Update(user);
     }
 
+    public async Task<List<User>> GetUsersByRoleAsync(string role)
+    {
+        return await _db.Users
+            .Where(u => u.Role == role && u.IsActive)
+            .OrderBy(u => u.FullName)
+            .ToListAsync();
+    }
+
     public async Task SaveChangesAsync()
     {
         await _db.SaveChangesAsync();

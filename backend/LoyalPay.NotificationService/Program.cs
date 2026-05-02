@@ -59,6 +59,7 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<TransferCompletedConsumer>();
     x.AddConsumer<UserNotificationRequestedConsumer>();
     x.AddConsumer<UserStatusChangedConsumer>();
+    x.AddConsumer<SupportTicketUpdatedConsumer>();
 
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -101,6 +102,11 @@ builder.Services.AddMassTransit(x =>
         cfg.ReceiveEndpoint("notification-user-status-changed", e =>
         {
             e.ConfigureConsumer<UserStatusChangedConsumer>(context);
+        });
+
+        cfg.ReceiveEndpoint("notification-support-ticket-updated", e =>
+        {
+            e.ConfigureConsumer<SupportTicketUpdatedConsumer>(context);
         });
     });
 });
