@@ -1,53 +1,63 @@
 import { Routes } from '@angular/router';
+import { PublicLayoutComponent } from './layout/public-layout/public-layout.component';
+import { UserLayoutComponent } from './layout/user-layout/user-layout.component';
+import { AdminLayoutComponent } from './layout/admin-layout/admin-layout.component';
+import { SupportLayoutComponent } from './layout/support-layout/support-layout.component';
 import { authGuard } from './core/guards/auth.guard';
 import { roleGuard } from './core/guards/role.guard';
 
 export const routes: Routes = [
-  // Landing page
   {
     path: '',
-    loadComponent: () => import('./features/home/home.component').then(m => m.HomeComponent)
-  },
-
-  // Public auth routes
-  {
-    path: '',
-    loadChildren: () => import('./features/auth/auth.routes').then(m => m.AUTH_ROUTES)
-  },
-
-  // User portal
-  {
-    path: '',
-    loadComponent: () => import('./layouts/user-shell/user-shell.component').then(m => m.UserShellComponent),
-    canActivate: [authGuard],
+    component: PublicLayoutComponent,
     children: [
-      {
-        path: 'dashboard',
-        loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent)
-      },
-      {
-        path: 'wallet',
-        loadChildren: () => import('./features/wallet/wallet.routes').then(m => m.WALLET_ROUTES)
-      },
-      {
-        path: 'rewards',
-        loadChildren: () => import('./features/rewards/rewards.routes').then(m => m.REWARDS_ROUTES)
-      },
-      {
-        path: 'profile',
-        loadChildren: () => import('./features/profile/profile.routes').then(m => m.PROFILE_ROUTES)
-      }
+      { path: '', loadComponent: () => import('./features/public/home/home.component').then(m => m.HomeComponent) },
+      { path: 'login', loadComponent: () => import('./features/auth/login/login.component').then(m => m.LoginComponent) },
+      { path: 'signup', loadComponent: () => import('./features/auth/signup/signup.component').then(m => m.SignupComponent) }
     ]
   },
-
-  // Admin portal
+  {
+    path: 'user',
+    component: UserLayoutComponent,
+    canActivate: [authGuard, roleGuard],
+    data: { role: 'User' },
+    children: [
+      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+      { path: 'dashboard', loadComponent: () => import('./features/user/dashboard/dashboard.component').then(m => m.DashboardComponent) },
+      { path: 'transactions', loadComponent: () => import('./features/user/transactions/transactions.component').then(m => m.TransactionsComponent) },
+      { path: 'rewards', loadComponent: () => import('./features/user/rewards/rewards.component').then(m => m.RewardsComponent) },
+      { path: 'profile', loadComponent: () => import('./features/user/profile/profile.component').then(m => m.ProfileComponent) },
+      { path: 'kyc', loadComponent: () => import('./features/user/kyc/kyc.component').then(m => m.KycComponent) },
+      { path: 'support', loadComponent: () => import('./features/user/support/support.component').then(m => m.SupportComponent) }
+    ]
+  },
   {
     path: 'admin',
-    loadComponent: () => import('./layouts/admin-shell/admin-shell.component').then(m => m.AdminShellComponent),
+    component: AdminLayoutComponent,
     canActivate: [authGuard, roleGuard],
     data: { role: 'Admin' },
-    loadChildren: () => import('./features/admin/admin.routes').then(m => m.ADMIN_ROUTES)
+    children: [
+      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+      { path: 'dashboard', loadComponent: () => import('./features/admin/dashboard/admin-dashboard.component').then(m => m.AdminDashboardComponent) },
+      { path: 'users', loadComponent: () => import('./features/admin/users/admin-users.component').then(m => m.AdminUsersComponent) },
+      { path: 'kyc', loadComponent: () => import('./features/admin/kyc/admin-kyc.component').then(m => m.AdminKycComponent) },
+      { path: 'campaigns', loadComponent: () => import('./features/admin/campaigns/admin-campaigns.component').then(m => m.AdminCampaignsComponent) },
+      { path: 'tickets', loadComponent: () => import('./features/support/tickets/support-tickets.component').then(m => m.SupportTicketsComponent) },
+      { path: 'staff', loadComponent: () => import('./features/admin/staff/admin-staff.component').then(m => m.AdminStaffComponent) }
+    ]
   },
-
+  {
+    path: 'support',
+    component: SupportLayoutComponent,
+    canActivate: [authGuard, roleGuard],
+    data: { role: 'Support' },
+    children: [
+      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+      { path: 'dashboard', loadComponent: () => import('./features/support/dashboard/support-dashboard.component').then(m => m.SupportDashboardComponent) },
+      { path: 'tickets', loadComponent: () => import('./features/support/tickets/support-tickets.component').then(m => m.SupportTicketsComponent) },
+      { path: 'tools', redirectTo: 'tickets' },
+      { path: 'users', redirectTo: 'tickets' }
+    ]
+  },
   { path: '**', redirectTo: '' }
 ];

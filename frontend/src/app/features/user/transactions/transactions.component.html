@@ -1,0 +1,205 @@
+<div class="max-w-6xl mx-auto space-y-6">
+  <!-- PIN Pad Popup -->
+  <app-pin-pad
+    *ngIf="showPinPad"
+    [title]="pinPadTitle"
+    [subtitle]="pinPadSubtitle"
+    (confirmed)="onPinConfirmed($event)"
+    (cancelled)="onPinCancelled()">
+  </app-pin-pad>
+
+  <div class="bg-white shadow-sm border border-gray-200 rounded-lg overflow-hidden">
+    <!-- Tabs -->
+    <div class="border-b border-gray-200 flex overflow-x-auto">
+      <button type="button"
+        (click)="activeTab = 'topup'"
+        [class.border-banking-primary]="activeTab === 'topup'"
+        [class.text-banking-primary]="activeTab === 'topup'"
+        class="px-6 py-4 text-sm font-medium border-b-2 border-transparent text-gray-500 whitespace-nowrap">
+        Add Money
+      </button>
+      <button type="button"
+        (click)="activeTab = 'transfer'"
+        [class.border-banking-primary]="activeTab === 'transfer'"
+        [class.text-banking-primary]="activeTab === 'transfer'"
+        class="px-6 py-4 text-sm font-medium border-b-2 border-transparent text-gray-500 whitespace-nowrap">
+        Transfer Funds
+      </button>
+      <button type="button"
+        (click)="activeTab = 'history'"
+        [class.border-banking-primary]="activeTab === 'history'"
+        [class.text-banking-primary]="activeTab === 'history'"
+        class="px-6 py-4 text-sm font-medium border-b-2 border-transparent text-gray-500 whitespace-nowrap">
+        Transaction History
+      </button>
+      <button type="button"
+        (click)="activeTab = 'statement'"
+        [class.border-banking-primary]="activeTab === 'statement'"
+        [class.text-banking-primary]="activeTab === 'statement'"
+        class="px-6 py-4 text-sm font-medium border-b-2 border-transparent text-gray-500 whitespace-nowrap">
+        Statements
+      </button>
+    </div>
+
+    <div class="p-6">
+      <!-- Transaction History -->
+      <div *ngIf="activeTab === 'history'" class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+              <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
+              <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Balance</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <tr *ngIf="isLoading">
+              <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">Loading...</td>
+            </tr>
+            <tr *ngIf="!isLoading && transactions.length === 0">
+              <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">No transactions found.</td>
+            </tr>
+            <tr *ngFor="let tx of transactions" class="hover:bg-gray-50">
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ tx.createdAt | date:'short' }}</td>
+              <td class="px-6 py-4 text-sm text-gray-900">{{ tx.description || 'Wallet transaction' }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ tx.entryType }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-medium"
+                [ngClass]="{'text-green-600': tx.entryType === 'Credit', 'text-red-600': tx.entryType === 'Debit'}">
+                INR {{ tx.amount | number:'1.2-2' }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500">
+                INR {{ tx.balanceAfter | number:'1.2-2' }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Transfer Funds -->
+      <div *ngIf="activeTab === 'transfer'" class="max-w-md mx-auto py-8 space-y-4">
+        <h2 class="text-xl font-semibold text-gray-900">Transfer to LoyalPay User</h2>
+
+        <div *ngIf="transferMessage" class="p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg">
+          {{ transferMessage }}
+        </div>
+        <div *ngIf="transferError" class="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg">
+          {{ transferError }}
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Recipient Email</label>
+          <input type="email" [(ngModel)]="transferEmail"
+            class="input-field py-2 px-3 border w-full"
+            placeholder="recipient@example.com">
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Amount (INR)</label>
+          <input type="number" [(ngModel)]="transferAmount" min="1" max="25000"
+            class="input-field py-2 px-3 border w-full"
+            placeholder="Enter amount (max ₹25,000)">
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Note <span class="text-gray-400 font-normal">(optional)</span></label>
+          <input type="text" [(ngModel)]="transferNote"
+            class="input-field py-2 px-3 border w-full"
+            placeholder="e.g. Rent, Dinner split">
+        </div>
+
+        <!-- PIN entry hint -->
+        <div class="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+          <svg class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+          You will be asked to enter your 5-digit PIN to confirm.
+        </div>
+
+        <button type="button" (click)="initiateTransfer()"
+          [disabled]="isTransferring"
+          class="btn-primary w-full disabled:bg-gray-400 disabled:cursor-not-allowed">
+          <span *ngIf="isTransferring">Processing...</span>
+          <span *ngIf="!isTransferring">Send Money</span>
+        </button>
+      </div>
+
+      <!-- Add Money / Top Up -->
+      <div *ngIf="activeTab === 'topup'" class="max-w-md mx-auto py-8 space-y-4">
+        <h2 class="text-xl font-semibold text-gray-900">Add Money to Wallet</h2>
+
+        <div *ngIf="topupMessage" class="p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg">
+          {{ topupMessage }}
+        </div>
+        <div *ngIf="topupError" class="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg">
+          {{ topupError }}
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Amount (INR)</label>
+          <input type="number" [(ngModel)]="topupAmount" min="1" max="50000"
+            class="input-field py-2 px-3 border w-full"
+            placeholder="Enter amount (max ₹50,000)">
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+          <select [(ngModel)]="paymentMethod" class="input-field py-2 px-3 border bg-white w-full">
+            <option value="UPI">UPI</option>
+            <option value="Card">Card</option>
+            <option value="NetBanking">NetBanking</option>
+          </select>
+        </div>
+
+        <div class="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+          <svg class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+          You will be asked to enter your 5-digit PIN to confirm.
+        </div>
+
+        <button type="button" (click)="initiateTopUp()"
+          [disabled]="isToppingUp"
+          class="btn-primary w-full disabled:bg-gray-400 disabled:cursor-not-allowed">
+          <span *ngIf="isToppingUp">Processing...</span>
+          <span *ngIf="!isToppingUp">Top Up</span>
+        </button>
+      </div>
+
+      <!-- Statements -->
+      <div *ngIf="activeTab === 'statement'" class="max-w-md mx-auto py-8 space-y-4">
+        <h2 class="text-xl font-semibold text-gray-900">Download Statement</h2>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">From Date</label>
+          <input type="date" [(ngModel)]="statementFrom" class="input-field py-2 px-3 border w-full">
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">To Date</label>
+          <input type="date" [(ngModel)]="statementTo" class="input-field py-2 px-3 border w-full">
+        </div>
+
+        <p *ngIf="!statementFrom || !statementTo" class="text-sm text-gray-500">
+          Please select both dates to download.
+        </p>
+
+        <div class="flex gap-3">
+          <button type="button" (click)="downloadStatement('pdf')"
+            [disabled]="!statementFrom || !statementTo"
+            class="btn-primary flex-1 disabled:bg-gray-400 disabled:cursor-not-allowed">
+            PDF
+          </button>
+          <button type="button" (click)="downloadStatement('csv')"
+            [disabled]="!statementFrom || !statementTo"
+            class="btn-secondary flex-1 disabled:opacity-50 disabled:cursor-not-allowed">
+            CSV
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

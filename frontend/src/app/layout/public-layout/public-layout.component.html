@@ -1,0 +1,61 @@
+<div class="min-h-screen bg-white flex flex-col">
+  <!-- Public Navigation Bar -->
+  <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+      <div class="flex items-center gap-2 cursor-pointer" routerLink="/">
+        <!-- Simple Corporate Logo Placeholder -->
+        <div class="w-8 h-8 bg-banking-primary rounded-sm flex items-center justify-center">
+          <span class="text-white font-bold text-lg leading-none">L</span>
+        </div>
+        <span class="text-2xl font-bold text-banking-primary tracking-tight">LoyalPay</span>
+      </div>
+      
+      <nav class="hidden md:flex items-center gap-8">
+        <a routerLink="/" class="text-gray-600 hover:text-banking-primary font-medium transition-colors">Personal</a>
+        <a routerLink="/" class="text-gray-600 hover:text-banking-primary font-medium transition-colors">Business</a>
+        <a routerLink="/" class="text-gray-600 hover:text-banking-primary font-medium transition-colors">Corporate & Institutional</a>
+        <a routerLink="/" class="text-gray-600 hover:text-banking-primary font-medium transition-colors">About Us</a>
+      </nav>
+
+      <div class="flex items-center gap-4">
+        <a routerLink="/login" class="text-banking-primary font-semibold hover:text-banking-800 transition-colors">Sign In</a>
+        <a routerLink="/signup" class="btn-primary">Open an Account</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Area -->
+  <main class="flex-grow flex flex-col relative w-full">
+    <router-outlet></router-outlet>
+  </main>
+
+  <!-- Corporate Footer -->
+  <footer class="bg-gray-50 border-t border-gray-200 py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-8">
+      <div>
+        <h4 class="text-sm font-bold text-gray-900 tracking-wider uppercase mb-4">LoyalPay Group</h4>
+        <ul class="space-y-2 text-sm text-gray-600">
+          <li><a href="#" class="hover:text-banking-primary">Investor Relations</a></li>
+          <li><a href="#" class="hover:text-banking-primary">Careers</a></li>
+          <li><a href="#" class="hover:text-banking-primary">News & Media</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4 class="text-sm font-bold text-gray-900 tracking-wider uppercase mb-4">Support</h4>
+        <ul class="space-y-2 text-sm text-gray-600">
+          <li><a href="#" class="hover:text-banking-primary">Help Center</a></li>
+          <li><a href="#" class="hover:text-banking-primary">Contact Us</a></li>
+          <li><a href="#" class="hover:text-banking-primary">Security</a></li>
+        </ul>
+      </div>
+      <div class="md:col-span-2">
+        <p class="text-sm text-gray-500 leading-relaxed mb-4">
+          LoyalPay is a global banking and financial services company. Products and services are offered by LoyalPay Bank N.A., Member FDIC and its affiliates.
+        </p>
+        <p class="text-xs text-gray-400">
+          &copy; 2026 LoyalPay Corporation. All rights reserved. Equal Housing Lender.
+        </p>
+      </div>
+    </div>
+  </footer>
+</div>

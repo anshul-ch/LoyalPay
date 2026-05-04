@@ -1,0 +1,130 @@
+<div class="bg-gray-50 flex flex-col items-center justify-center py-24 sm:px-6 lg:px-8">
+  <div class="sm:mx-auto sm:w-full sm:max-w-md">
+    <h2 class="mt-6 text-center text-3xl font-extrabold text-banking-primary">
+      Sign in to your account
+    </h2>
+    <p class="mt-2 text-center text-sm text-gray-600">
+      Or
+      <a routerLink="/signup" class="font-medium text-banking-accent hover:text-banking-primary">
+        create a new account today
+      </a>
+    </p>
+  </div>
+
+  <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+    <div class="bg-white py-8 px-4 shadow-sm border border-gray-200 sm:rounded-lg sm:px-10">
+      <form class="space-y-6" [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+        <div>
+          <label for="email" class="block text-sm font-medium text-gray-700">
+            Email address
+          </label>
+          <div class="mt-1">
+            <input id="email" formControlName="email" type="email" autocomplete="email" required class="input-field py-2 px-3 border" placeholder="user@example.com">
+          </div>
+        </div>
+
+        <div>
+          <label for="password" class="block text-sm font-medium text-gray-700">
+            Password
+          </label>
+          <div class="mt-1 relative">
+            <input id="password" formControlName="password" [type]="showPassword ? 'text' : 'password'" autocomplete="current-password" required class="input-field py-2 pl-3 pr-11 border" placeholder="Password">
+            <button type="button" (click)="showPassword = !showPassword" class="absolute inset-y-0 right-0 px-3 text-gray-500 hover:text-banking-primary" [attr.aria-label]="showPassword ? 'Hide password' : 'Show password'">
+              <svg *ngIf="!showPassword" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.25 12s3.75-6.75 9.75-6.75S21.75 12 21.75 12 18 18.75 12 18.75 2.25 12 2.25 12z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15.25A3.25 3.25 0 1 0 12 8.75a3.25 3.25 0 0 0 0 6.5z" />
+              </svg>
+              <svg *ngIf="showPassword" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M7.1 7.1C4 8.8 2.25 12 2.25 12S6 18.75 12 18.75c1.8 0 3.4-.6 4.8-1.4M14.1 5.5c4.7 1 7.65 6.5 7.65 6.5s-.8 1.5-2.3 3" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between">
+          <div class="flex items-center">
+            <input id="remember-me" name="remember-me" type="checkbox" class="h-4 w-4 text-banking-primary focus:ring-banking-accent border-gray-300 rounded">
+            <label for="remember-me" class="ml-2 block text-sm text-gray-900">
+              Remember me
+            </label>
+          </div>
+
+          <div class="text-sm">
+            <a href="#" class="font-medium text-banking-accent hover:text-banking-primary">
+              Forgot your password?
+            </a>
+          </div>
+        </div>
+        
+        <div>
+          <button type="submit" [disabled]="loginForm.invalid || isLoading" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-banking-primary hover:bg-banking-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-banking-accent disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors">
+            <span *ngIf="isLoading">Signing in...</span>
+            <span *ngIf="!isLoading">Sign in</span>
+          </button>
+        </div>
+      </form>
+
+      <div *ngIf="errorMessage" class="mt-4 text-sm text-red-600 font-medium whitespace-pre-line">
+        {{ errorMessage }}
+      </div>
+
+      <div *ngIf="!showReviewForm && isDeactivationError()" class="mt-4">
+        <button type="button" (click)="openReviewForm()" class="btn-secondary w-full">
+          Raise a support ticket
+        </button>
+      </div>
+
+      <div *ngIf="showReviewForm" class="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-4">
+        <div>
+          <h3 class="text-sm font-semibold text-amber-900">Raise a support ticket</h3>
+          <p class="text-sm text-amber-800 mt-1">
+            If you believe your account was deactivated in error, submit a review ticket and support will verify whether it should stay deactivated or be reactivated.
+          </p>
+        </div>
+
+        <div class="space-y-3">
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Email</label>
+            <input type="email" [(ngModel)]="reviewEmail" class="input-field mt-1 py-2 px-3 border bg-white w-full" placeholder="Your account email">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Category</label>
+            <select [(ngModel)]="reviewCategory" class="input-field mt-1 py-2 px-3 border bg-white w-full">
+              <option value="AccountAccess">Account Access</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Type of Reason</label>
+            <select [(ngModel)]="reviewReasonType" class="input-field mt-1 py-2 px-3 border bg-white w-full">
+              <option *ngFor="let option of reviewOptions()" [value]="option">{{ option }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Description</label>
+            <textarea [(ngModel)]="reviewDescription" rows="4" class="input-field mt-1 py-2 px-3 border bg-white w-full" placeholder="Explain why the account should be rechecked or reactivated."></textarea>
+          </div>
+          <div *ngIf="reviewError" class="text-sm text-red-600 font-medium">{{ reviewError }}</div>
+          <div *ngIf="reviewMessage" class="text-sm text-green-700 font-medium">{{ reviewMessage }}</div>
+          <button type="button" (click)="submitReviewTicket()" [disabled]="isSubmittingReview" class="w-full btn-secondary disabled:bg-gray-400 disabled:cursor-not-allowed">
+            <span *ngIf="isSubmittingReview">Submitting...</span>
+            <span *ngIf="!isSubmittingReview">Submit Review Ticket</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="mt-6">
+        <div class="relative">
+          <div class="absolute inset-0 flex items-center">
+            <div class="w-full border-t border-gray-300"></div>
+          </div>
+          <div class="relative flex justify-center text-sm">
+            <span class="px-2 bg-white text-gray-500">
+              Secure, Encrypted Connection
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

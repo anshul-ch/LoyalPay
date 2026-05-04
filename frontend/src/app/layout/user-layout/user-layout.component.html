@@ -1,0 +1,32 @@
+<div class="min-h-screen bg-gray-50 flex">
+  <aside class="w-64 bg-white text-gray-800 flex flex-col border-r border-gray-200">
+    <div class="p-6 border-b border-gray-200">
+      <h2 class="text-2xl font-bold tracking-wider text-banking-primary">LoyalPay</h2>
+      <p class="text-gray-500 text-sm mt-1">Consumer Portal</p>
+    </div>
+    <nav class="flex-1 px-4 space-y-2 mt-4">
+      <a routerLink="/user/dashboard" routerLinkActive="bg-banking-secondary text-banking-primary" class="block px-4 py-2 rounded hover:bg-gray-100">Wallet Dashboard</a>
+      <a routerLink="/user/transactions" routerLinkActive="bg-banking-secondary text-banking-primary" class="block px-4 py-2 rounded hover:bg-gray-100">Transactions</a>
+      <a routerLink="/user/rewards" routerLinkActive="bg-banking-secondary text-banking-primary" class="block px-4 py-2 rounded hover:bg-gray-100">Rewards</a>
+      <a routerLink="/user/profile" routerLinkActive="bg-banking-secondary text-banking-primary" class="block px-4 py-2 rounded hover:bg-gray-100">Profile & Security</a>
+      <a routerLink="/user/support" routerLinkActive="bg-banking-secondary text-banking-primary" class="block px-4 py-2 rounded hover:bg-gray-100">Support</a>
+    </nav>
+    <div class="p-4 border-t border-gray-200">
+      <button (click)="logout()" class="w-full text-left px-4 py-2 rounded text-red-600 hover:bg-red-50">Sign Out</button>
+    </div>
+  </aside>
+  <main class="flex-1 flex flex-col min-w-0">
+    <header class="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-8">
+      <h1 class="text-xl font-semibold text-gray-800">Account Overview</h1>
+      <div class="flex items-center space-x-4" *ngIf="currentUser$ | async as user">
+        <span class="text-sm text-gray-600 hidden sm:block">{{ user.fullName || user.email }}</span>
+        <div class="h-8 w-8 bg-banking-100 rounded-full flex items-center justify-center text-banking-700 font-bold text-sm">
+          {{ getInitial(user.fullName) }}
+        </div>
+      </div>
+    </header>
+    <div class="p-8 flex-1 overflow-y-auto">
+      <router-outlet></router-outlet>
+    </div>
+  </main>
+</div>

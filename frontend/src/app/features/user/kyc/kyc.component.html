@@ -1,0 +1,113 @@
+<div class="max-w-4xl mx-auto space-y-6">
+  <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <div class="px-6 py-5 border-b border-gray-200">
+      <h3 class="text-lg font-medium text-gray-900">Know Your Customer (KYC) Verification</h3>
+      <p class="mt-1 text-sm text-gray-500">
+        To unlock full account features including international transfers, please verify your identity.
+      </p>
+    </div>
+
+    <div class="p-6">
+      <!-- Status Banner -->
+      <div *ngIf="!isLoadingStatus">
+        <div *ngIf="kycStatus?.status === 'Approved'" class="bg-green-50 border-l-4 border-green-400 p-4 mb-6">
+          <div class="flex">
+            <div class="flex-shrink-0">
+              <svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+              </svg>
+            </div>
+            <div class="ml-3">
+              <p class="text-sm text-green-700 font-medium">Your identity has been verified.</p>
+              <p class="text-sm text-green-600 mt-1">Thank you for completing the KYC process.</p>
+            </div>
+          </div>
+        </div>
+
+        <div *ngIf="kycStatus?.status === 'Pending'" class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+          <div class="flex">
+            <div class="flex-shrink-0">
+              <svg class="h-5 w-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div class="ml-3">
+              <p class="text-sm text-yellow-700 font-medium">Verification in progress</p>
+              <p class="text-sm text-yellow-600 mt-1">We are currently reviewing your submitted documents. This usually takes 1-2 business days.</p>
+            </div>
+          </div>
+        </div>
+
+        <div *ngIf="kycStatus?.status === 'Rejected'" class="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
+          <div class="flex">
+            <div class="flex-shrink-0">
+              <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+              </svg>
+            </div>
+            <div class="ml-3">
+              <p class="text-sm text-red-700 font-medium">Verification rejected</p>
+              <p class="text-sm text-red-600 mt-1">Reason: {{ kycStatus?.rejectionNote || 'Invalid documents provided.' }}</p>
+              <p class="text-sm text-red-600 mt-2">Please submit your details again below.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KYC Form -->
+      <form *ngIf="!isLoadingStatus && (kycStatus?.status === 'NotSubmitted' || !kycStatus || kycStatus?.status === 'Rejected')" [formGroup]="kycForm" (ngSubmit)="onSubmit()" class="space-y-6 max-w-2xl">
+        <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+          <div class="sm:col-span-2">
+            <label for="documentType" class="block text-sm font-medium text-gray-700">Document Type</label>
+            <select id="documentType" formControlName="documentType" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-banking-accent focus:border-banking-accent sm:text-sm rounded-md border">
+              <option value="" disabled>Select a document type</option>
+              <option value="Passport">Passport</option>
+              <option value="DrivingLicense">Driving License</option>
+              <option value="PAN">PAN Card</option>
+              <option value="Aadhaar">Aadhaar</option>
+            </select>
+          </div>
+
+          <div class="sm:col-span-2">
+            <label for="documentNumber" class="block text-sm font-medium text-gray-700">Document Number</label>
+            <input type="text" id="documentNumber" formControlName="documentNumber" class="input-field py-2 px-3 border" placeholder="Enter document number">
+          </div>
+
+          <div class="sm:col-span-2">
+            <label class="block text-sm font-medium text-gray-700">Document Upload</label>
+            <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md relative"
+                 [ngClass]="{'border-banking-primary bg-banking-50': selectedFile}">
+              <div class="space-y-1 text-center">
+                <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true" *ngIf="!selectedFile">
+                  <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                <div *ngIf="selectedFile" class="text-banking-primary font-medium mb-2">
+                  {{ selectedFile.name }} selected
+                </div>
+                <div class="flex text-sm text-gray-600 justify-center">
+                  <label for="file-upload" class="relative cursor-pointer bg-white rounded-md font-medium text-banking-primary hover:text-banking-accent focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-banking-primary px-2">
+                    <span>Upload a file</span>
+                    <input id="file-upload" type="file" class="sr-only" (change)="onFileSelected($event)" accept="image/jpeg,image/png,application/pdf">
+                  </label>
+                  <p class="pl-1" *ngIf="!selectedFile">or drag and drop</p>
+                </div>
+                <p class="text-xs text-gray-500" *ngIf="!selectedFile">PNG, JPG, PDF up to 8MB</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div *ngIf="errorMessage" class="text-sm text-red-600 font-medium">
+          {{ errorMessage }}
+        </div>
+
+        <div class="pt-4 flex justify-end">
+          <button type="submit" [disabled]="kycForm.invalid || !selectedFileBase64 || isSubmitting" class="btn-primary flex justify-center w-full sm:w-auto px-8 disabled:bg-gray-400 disabled:cursor-not-allowed">
+            <span *ngIf="isSubmitting">Submitting...</span>
+            <span *ngIf="!isSubmitting">Submit Verification</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,240 @@
+
+<div class="space-y-6">
+  <div class="flex flex-col md:flex-row md:items-end justify-between gap-3">
+    <h2 class="text-2xl font-bold text-gray-900">Support Tickets</h2>
+    <div class="flex gap-2 flex-wrap">
+      <!-- filter status dropdown — Resolved covers both Resolved/Closed -->
+      <select [(ngModel)]="status" class="input-field py-2 px-3 border bg-white w-40">
+        <option value="">All status</option>
+        <option>Open</option>
+        <option>InProgress</option>
+        <option value="Resolved">Resolved</option>
+      </select>
+      <select [(ngModel)]="category" class="input-field py-2 px-3 border bg-white w-48">
+        <option value="">All categories</option>
+        <option>PinReset</option>
+        <option>AccountAccess</option>
+        <option>PaymentIssue</option>
+        <option>TransactionDispute</option>
+        <option>KycProblem</option>
+        <option>Rewards</option>
+        <option>Other</option>
+      </select>
+      <button (click)="load()" class="btn-primary">Filter</button>
+    </div>
+  </div>
+
+  <div *ngIf="message" class="p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg">{{ message }}</div>
+  <div *ngIf="error" class="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg">{{ error }}</div>
+
+  <div class="card overflow-x-auto">
+    <table class="min-w-full divide-y divide-gray-200">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ticket</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Priority</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+          <th class="px-4 py-3"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-200">
+        <tr *ngIf="tickets.length === 0">
+          <td colspan="6" class="px-4 py-6 text-center text-gray-500">No tickets found.</td>
+        </tr>
+        <tr *ngFor="let ticket of tickets" class="hover:bg-gray-50">
+          <td class="px-4 py-3">
+            <p class="font-medium">#{{ ticket.ticketNumber }}</p>
+            <p class="text-sm text-gray-500">{{ ticket.subject }}</p>
+          </td>
+          <td class="px-4 py-3">
+            <p>{{ ticket.user?.fullName }}</p>
+            <p class="text-sm text-gray-500">{{ ticket.user?.email }}</p>
+            <p class="text-xs text-gray-400" *ngIf="ticket.assignedToUserId">Assigned</p>
+            <p class="text-xs text-indigo-600 font-medium" *ngIf="role === 'Admin' && (ticket.resolution || '').includes('[Ownership Request]')">
+              Ownership request pending admin approval
+            </p>
+          </td>
+          <td class="px-4 py-3">
+            <span class="px-2 py-1 rounded-full text-xs font-medium"
+              [ngClass]="{
+                'bg-yellow-100 text-yellow-800': ticket.status === 'Open',
+                'bg-blue-100 text-blue-800': ticket.status === 'InProgress',
+                'bg-green-100 text-green-800': ticket.status === 'Resolved' || ticket.status === 'Closed'
+              }">
+              {{ ticket.status === 'Closed' ? 'Resolved' : ticket.status }}
+            </span>
+          </td>
+          <td class="px-4 py-3">
+            <span class="px-2 py-1 rounded-full text-xs font-medium"
+              [ngClass]="{
+                'bg-red-100 text-red-800': ticket.priority === 'High',
+                'bg-amber-100 text-amber-800': ticket.priority === 'Medium',
+                'bg-gray-100 text-gray-700': ticket.priority === 'Low'
+              }">
+              {{ ticket.priority }}
+            </span>
+          </td>
+          <td class="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
+            {{ ticket.createdAt | date:'MMM d, y' }}
+          </td>
+          <td class="px-4 py-3 text-right space-x-2">
+            <span *ngIf="role === 'Support' && !isAssignedToCurrentSupport(ticket)"
+              class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+              View only
+            </span>
+            <button (click)="open(ticket)" class="btn-secondary">Open</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Ticket Detail Panel -->
+  <div *ngIf="selected" class="card p-6 space-y-4">
+    <div class="flex justify-between gap-4">
+      <div>
+        <h3 class="font-semibold text-gray-900">#{{ selected.ticketNumber }} — {{ selected.subject }}</h3>
+        <p class="text-sm text-gray-500 mt-1">
+          {{ selected.category }} | {{ selected.user?.fullName }} | {{ selected.user?.email }}
+        </p>
+      </div>
+      <button type="button" (click)="selected = null" class="btn-secondary flex-shrink-0">Close</button>
+    </div>
+
+    <!-- Ticket description (read-only for everyone) -->
+    <div class="bg-gray-50 rounded-lg p-4">
+      <p class="text-xs font-medium text-gray-500 uppercase mb-1">Description</p>
+      <p class="text-sm text-gray-700">{{ selected.description }}</p>
+    </div>
+
+    <!-- Resolution note read-only preview (if any) -->
+    <div *ngIf="selected.resolution" class="bg-blue-50 rounded-lg p-4">
+      <p class="text-xs font-medium text-blue-600 uppercase mb-1">Resolution Note</p>
+      <p class="text-sm text-gray-700 whitespace-pre-line">{{ selected.resolution }}</p>
+    </div>
+
+    <!-- ── ADMIN controls ── -->
+    <ng-container *ngIf="role === 'Admin'">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl">
+        <!-- Assign agent — single place -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Assign Agent</label>
+          <p *ngIf="selected.assignedAgentName" class="text-xs text-gray-500 mb-1">
+            Currently: {{ selected.assignedAgentName }}
+          </p>
+          <select [(ngModel)]="assignAgentId" class="input-field py-2 px-3 border bg-white w-full">
+            <option value="">— select agent —</option>
+            <option *ngFor="let agent of agents" [value]="agent.userId">{{ agent.fullName }}</option>
+          </select>
+        </div>
+        <!-- Priority -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+          <select [(ngModel)]="updatePriority" class="input-field py-2 px-3 border bg-white w-full">
+            <option value="Low">Low</option>
+            <option value="Medium">Medium</option>
+            <option value="High">High</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="flex gap-3">
+        <button type="button" (click)="adminSave()" class="btn-primary">Save Changes</button>
+      </div>
+    </ng-container>
+
+    <!-- ── SUPPORT controls ── -->
+    <ng-container *ngIf="role === 'Support'">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+          <select [(ngModel)]="updateStatus" class="input-field py-2 px-3 border bg-white w-full"
+            [disabled]="!isAssignedToCurrentSupport(selected)">
+            <option value="Open">Open</option>
+            <option value="InProgress">In Progress</option>
+            <option value="Resolved">Resolved</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Resolution Note</label>
+        <textarea [(ngModel)]="resolution" class="input-field py-2 px-3 border w-full" rows="3"
+          [disabled]="!isAssignedToCurrentSupport(selected)"
+          placeholder="Add a resolution note..."></textarea>
+      </div>
+
+      <div *ngIf="isAssignedToCurrentSupport(selected)" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Category Action</label>
+          <select [(ngModel)]="selectedAction" class="input-field py-2 px-3 border bg-white w-full">
+            <option value="">Select action</option>
+            <option *ngFor="let option of actionOptions()" [value]="option">{{ option }}</option>
+          </select>
+        </div>
+        <div class="flex items-end">
+          <button type="button" (click)="applyActionTemplate()" class="btn-secondary w-full">Add Action Note</button>
+        </div>
+      </div>
+
+      <div *ngIf="canActivateUser()" class="border-t border-gray-200 pt-4 space-y-3">
+        <h4 class="font-medium text-gray-900">Account Access Decision</h4>
+        <p class="text-sm text-gray-500">
+          If the review is successful, activate the user's account so they can sign in again.
+        </p>
+        <button type="button" (click)="activateUserFromTicket()" [disabled]="activatingUser" class="btn-primary">
+          <span *ngIf="activatingUser">Activating...</span>
+          <span *ngIf="!activatingUser">Activate User Account</span>
+        </button>
+      </div>
+
+      <!-- PIN Reset section — only for assigned Support on PinReset tickets -->
+      <div *ngIf="selected.category === 'PinReset' && isAssignedToCurrentSupport(selected)"
+        class="border-t border-gray-200 pt-4 space-y-3">
+        <h4 class="font-medium text-gray-900">Reset Transaction PIN</h4>
+        <p class="text-sm text-gray-500">
+          Reset the user's transaction PIN to default (00000). The user can then set their own PIN from their profile.
+        </p>
+        <button type="button" (click)="openPinReset()" class="btn-secondary flex items-center gap-2">
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+          Reset PIN to Default
+        </button>
+      </div>
+
+      <div *ngIf="isAssignedToCurrentSupport(selected)" class="border-t border-gray-200 pt-4 space-y-3">
+        <h4 class="font-medium text-gray-900">Request Reassignment</h4>
+        <p class="text-sm text-gray-500">Request transfer to another support agent. Admin must approve by reassigning the ticket.</p>
+        <div class="flex flex-col sm:flex-row gap-3 max-w-xl">
+          <select [(ngModel)]="transferToAgentId" class="input-field py-2 px-3 border bg-white flex-1">
+            <option value="">Select support agent</option>
+            <option *ngFor="let agent of agents" [value]="agent.userId">{{ agent.fullName }}</option>
+          </select>
+          <button type="button" (click)="requestTransfer()" class="btn-secondary">Request Transfer</button>
+        </div>
+      </div>
+
+      <div class="border-t border-gray-200 pt-4 space-y-3">
+        <label class="block text-sm font-medium text-gray-700">Ownership Request Reason</label>
+        <input [(ngModel)]="ownershipReason" class="input-field py-2 px-3 border w-full"
+          placeholder="Optional reason for admin approval">
+        <p class="text-xs text-gray-500">If this ticket is not assigned to you, use "Request Ownership". Admin must approve reassignment.</p>
+        <button type="button" (click)="requestOwnership(selected)" class="btn-secondary">
+          Request Ownership from Admin
+        </button>
+      </div>
+
+      <!-- Update button always at the bottom -->
+      <div class="border-t border-gray-200 pt-4 flex gap-3">
+        <button type="button" (click)="saveTicket()" class="btn-primary"
+          [disabled]="!isAssignedToCurrentSupport(selected)">
+          Update Ticket
+        </button>
+      </div>
+    </ng-container>
+  </div>
+</div>

@@ -1,21 +1,30 @@
-import { CanActivateFn } from '@angular/router';
+import { CanActivateFn, Router } from '@angular/router';
 import { inject } from '@angular/core';
-import { Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
+import { map } from 'rxjs';
 
-export const roleGuard: CanActivateFn = (route) => {
-  const auth = inject(AuthService);
+export const roleGuard: CanActivateFn = (route, state) => {
+  const authService = inject(AuthService);
   const router = inject(Router);
-  const required = route.data['role'] as string;
-  const current = auth.currentUser$.value?.role;
 
-  if (current === required) {
-    return true;
+  const expectedRole = route.data['role'];
+
+  if (!authService.isAuthenticated()) {
+    return router.parseUrl('/login');
   }
 
-  if (current === 'Admin') {
-    return router.createUrlTree(['/admin/dashboard']);
-  }
+  return authService.ensureActiveSession().pipe(
+    map(active => {
+      const userRole = authService.getRole();
 
-  return router.createUrlTree(['/dashboard']);
+      if (active && userRole === expectedRole) {
+        return true;
+      }
+
+      if (userRole === 'Admin') return router.parseUrl('/admin');
+      if (userRole === 'Support') return router.parseUrl('/support');
+      if (userRole === 'User') return router.parseUrl('/user');
+      return router.parseUrl('/login');
+    })
+  );
 };

@@ -1,0 +1,113 @@
+<div class="space-y-6">
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+    <div>
+      <h2 class="text-2xl font-bold text-gray-900">Support Dashboard</h2>
+      <p class="text-sm text-gray-500 mt-1">Track open customer work and urgent requests.</p>
+    </div>
+    <div class="flex gap-2">
+      <button (click)="loadDashboard()" class="btn-secondary">Refresh</button>
+      <a routerLink="/support/tickets" class="btn-primary">Open Queue</a>
+    </div>
+  </div>
+
+  <div *ngIf="isLoading" class="card p-6 text-gray-500">Loading support dashboard...</div>
+  <div *ngIf="errorMessage" class="p-3 bg-red-50 text-red-700 rounded border border-red-200">{{ errorMessage }}</div>
+
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4" *ngIf="!isLoading">
+    <a routerLink="/support/tickets" class="card p-5 hover:border-banking-accent transition-colors">
+      <p class="text-sm text-gray-500">Open</p>
+      <p class="mt-2 text-3xl font-bold text-gray-900">{{ count('Open') }}</p>
+    </a>
+    <a routerLink="/support/tickets" class="card p-5 hover:border-banking-accent transition-colors">
+      <p class="text-sm text-gray-500">In Progress</p>
+      <p class="mt-2 text-3xl font-bold text-gray-900">{{ count('InProgress') }}</p>
+    </a>
+    <a routerLink="/support/tickets" class="card p-5 hover:border-banking-accent transition-colors">
+      <p class="text-sm text-gray-500">High Priority</p>
+      <p class="mt-2 text-3xl font-bold text-red-700">{{ highPriority().length }}</p>
+    </a>
+    <div class="card p-5">
+      <p class="text-sm text-gray-500">Resolved Today</p>
+      <p class="mt-2 text-3xl font-bold text-green-700">{{ resolvedToday() }}</p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 xl:grid-cols-2 gap-6" *ngIf="!isLoading">
+    <section class="card">
+      <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <h3 class="font-semibold text-gray-900">Active Queue</h3>
+        <a routerLink="/support/tickets" class="text-sm font-medium text-banking-accent">Work tickets</a>
+      </div>
+      <div class="divide-y divide-gray-200">
+        <div *ngIf="activeTickets().length === 0" class="p-6 text-sm text-gray-500">No active support tickets.</div>
+        <div *ngFor="let ticket of activeTickets() | slice:0:8" class="p-4 flex items-center justify-between gap-4">
+          <div>
+            <p class="font-medium text-gray-900">#{{ ticket.ticketNumber }} {{ ticket.subject }}</p>
+            <p class="text-sm text-gray-500">{{ ticket.category }} | {{ ticket.user?.fullName || 'Unknown user' }}</p>
+          </div>
+          <div class="text-right">
+            <span class="inline-flex px-2 py-1 rounded-full text-xs font-medium" [ngClass]="ticket.priority === 'High' ? 'bg-red-100 text-red-800' : ticket.priority === 'Medium' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-800'">{{ ticket.priority }}</span>
+            <p class="text-xs text-gray-500 mt-1">{{ ticket.createdAt | date:'shortDate' }}</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <h3 class="font-semibold text-gray-900">Recent Updates</h3>
+        <a routerLink="/support/tickets" class="text-sm font-medium text-banking-accent">Open queue</a>
+      </div>
+      <div class="divide-y divide-gray-200">
+        <div *ngIf="tickets.length === 0" class="p-6 text-sm text-gray-500">No recent updates.</div>
+        <div *ngFor="let ticket of tickets | slice:0:6" class="p-4 flex items-center justify-between gap-4">
+          <div>
+            <p class="font-medium text-gray-900">#{{ ticket.ticketNumber }} {{ ticket.subject }}</p>
+            <p class="text-sm text-gray-500">{{ ticket.category }} | {{ ticket.user?.email || 'Unknown' }}</p>
+          </div>
+          <span class="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-800">{{ ticket.status }}</span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="card" *ngIf="!isLoading">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h3 class="font-semibold text-gray-900">Recent Tickets</h3>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ticket</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Date</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+          <tr *ngIf="tickets.length === 0">
+            <td colspan="5" class="px-4 py-6 text-center text-sm text-gray-500">No tickets found.</td>
+          </tr>
+          <tr *ngFor="let ticket of tickets | slice:0:8">
+            <td class="px-4 py-3"><p class="font-medium text-gray-900">#{{ ticket.ticketNumber }}</p><p class="text-sm text-gray-500">{{ ticket.subject }}</p></td>
+            <td class="px-4 py-3 text-sm text-gray-700">{{ ticket.user?.email || 'Unknown' }}</td>
+            <td class="px-4 py-3 text-sm text-gray-700">{{ ticket.category }}</td>
+            <td class="px-4 py-3 text-sm">
+              <span class="px-2 py-1 rounded-full text-xs font-medium"
+                [ngClass]="{
+                  'bg-yellow-100 text-yellow-800': ticket.status === 'Open',
+                  'bg-blue-100 text-blue-800': ticket.status === 'InProgress',
+                  'bg-green-100 text-green-800': ticket.status === 'Resolved' || ticket.status === 'Closed'
+                }">
+                {{ ticket.status === 'Closed' ? 'Resolved' : ticket.status }}
+              </span>
+            </td>
+            <td class="px-4 py-3 text-sm text-gray-500 text-right whitespace-nowrap">{{ ticket.createdAt | date:'MMM d, y' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

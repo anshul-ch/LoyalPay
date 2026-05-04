@@ -1,0 +1,106 @@
+<!-- Deactivation Modal -->
+<div *ngIf="showDeactivateModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" (click)="cancelDeactivate()">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4" (click)="$event.stopPropagation()">
+    <h3 class="text-lg font-semibold text-gray-900">Deactivate User</h3>
+    <p class="text-sm text-gray-500">
+      You are about to deactivate <strong>{{ deactivatingUser?.fullName }}</strong> ({{ deactivatingUser?.email }}).
+      Please provide a reason.
+    </p>
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Reason</label>
+      <textarea [(ngModel)]="deactivateReason" rows="3"
+        class="input-field py-2 px-3 border w-full"
+        placeholder="e.g. Suspicious activity, policy violation..."></textarea>
+    </div>
+    <div *ngIf="error" class="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{{ error }}</div>
+    <div class="flex gap-3 justify-end">
+      <button type="button" (click)="cancelDeactivate()" class="btn-secondary">Cancel</button>
+      <button type="button" (click)="confirmDeactivate()" class="btn-primary bg-red-600 hover:bg-red-700">Deactivate</button>
+    </div>
+  </div>
+</div>
+
+<div class="space-y-6">
+  <div class="flex flex-col md:flex-row md:items-end gap-3 justify-between">
+    <h2 class="text-2xl font-bold text-gray-900">User Management</h2>
+    <div class="flex flex-wrap gap-2">
+      <input [(ngModel)]="search"
+        class="input-field py-2 px-3 border w-56"
+        placeholder="Search name or email">
+      <select [(ngModel)]="kycStatus" class="input-field py-2 px-3 border bg-white w-40">
+        <option value="">All KYC</option>
+        <option>NotSubmitted</option>
+        <option>Pending</option>
+        <option>Approved</option>
+        <option>Rejected</option>
+      </select>
+      <select [(ngModel)]="tier" class="input-field py-2 px-3 border bg-white w-36">
+        <option value="">All tiers</option>
+        <option>Silver</option>
+        <option>Gold</option>
+        <option>Platinum</option>
+      </select>
+      <select [(ngModel)]="status" class="input-field py-2 px-3 border bg-white w-36">
+        <option value="">All status</option>
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+      </select>
+      <button (click)="loadUsers()" class="btn-primary">Filter</button>
+    </div>
+  </div>
+
+  <div *ngIf="message" class="p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg">{{ message }}</div>
+  <div *ngIf="error && !showDeactivateModal" class="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg">{{ error }}</div>
+
+  <div class="card overflow-x-auto">
+    <table class="min-w-full divide-y divide-gray-200">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">KYC</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tier</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+          <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-200">
+        <tr *ngIf="users.length === 0">
+          <td colspan="5" class="px-4 py-6 text-center text-gray-500">No users found.</td>
+        </tr>
+        <tr *ngFor="let user of users" class="hover:bg-gray-50">
+          <td class="px-4 py-3">
+            <p class="font-medium text-gray-900">{{ user.fullName }}</p>
+            <p class="text-sm text-gray-500">{{ user.email }}</p>
+          </td>
+          <td class="px-4 py-3">
+            <span class="px-2 py-1 rounded-full text-xs font-medium"
+              [ngClass]="{
+                'bg-green-100 text-green-800': user.kycStatus === 'Approved',
+                'bg-yellow-100 text-yellow-800': user.kycStatus === 'Pending',
+                'bg-red-100 text-red-800': user.kycStatus === 'Rejected',
+                'bg-gray-100 text-gray-700': user.kycStatus === 'NotSubmitted'
+              }">
+              {{ user.kycStatus }}
+            </span>
+          </td>
+          <td class="px-4 py-3 text-sm text-gray-700">{{ user.tier }}</td>
+          <td class="px-4 py-3">
+            <span class="px-2 py-1 rounded-full text-xs font-medium"
+              [ngClass]="user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
+              {{ user.isActive ? 'Active' : 'Inactive' }}
+            </span>
+          </td>
+          <td class="px-4 py-3 text-right">
+            <button *ngIf="user.isActive" (click)="openDeactivate(user)"
+              class="btn-secondary text-red-600 border-red-300 hover:bg-red-50">
+              Deactivate
+            </button>
+            <button *ngIf="!user.isActive" (click)="activate(user)" class="btn-secondary">
+              Activate
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

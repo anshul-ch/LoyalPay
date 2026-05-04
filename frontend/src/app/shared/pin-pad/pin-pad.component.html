@@ -1,0 +1,57 @@
+<!-- Backdrop -->
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" (click)="cancel()">
+  <!-- Modal card — stop propagation so clicking inside doesn't close -->
+  <div class="bg-white rounded-2xl shadow-2xl w-80 overflow-hidden" (click)="$event.stopPropagation()">
+
+    <!-- Header -->
+    <div class="bg-banking-primary px-6 py-5 text-center">
+      <div class="mx-auto mb-3 h-12 w-12 rounded-full bg-white/20 flex items-center justify-center">
+        <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+        </svg>
+      </div>
+      <h3 class="text-lg font-bold text-white">{{ title }}</h3>
+      <p class="text-sm text-white/80 mt-1">{{ subtitle }}</p>
+    </div>
+
+    <!-- PIN dots -->
+    <div class="px-6 pt-6 pb-2 flex justify-center gap-4" [class.shake]="shake">
+      <div *ngFor="let i of dots"
+        class="h-4 w-4 rounded-full border-2 transition-all duration-150"
+        [ngClass]="pin.length > i
+          ? 'bg-banking-primary border-banking-primary scale-110'
+          : 'bg-white border-gray-300'">
+      </div>
+    </div>
+
+    <!-- Number pad -->
+    <div class="px-6 pb-6 pt-4 grid grid-cols-3 gap-3">
+      <button *ngFor="let key of keys"
+        type="button"
+        (click)="press(key)"
+        [disabled]="key === ''"
+        class="h-14 rounded-xl text-lg font-semibold transition-all duration-100 select-none
+               focus:outline-none focus:ring-2 focus:ring-banking-accent"
+        [ngClass]="{
+          'bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-900': key !== '' && key !== 'del',
+          'bg-red-50 hover:bg-red-100 active:scale-95 text-red-600': key === 'del',
+          'invisible': key === ''
+        }">
+        <span *ngIf="key !== 'del'">{{ key }}</span>
+        <svg *ngIf="key === 'del'" class="h-5 w-5 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 001.414.586H19a2 2 0 002-2V7a2 2 0 00-2-2h-8.172a2 2 0 00-1.414.586L3 12z" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Cancel -->
+    <div class="px-6 pb-6">
+      <button type="button" (click)="cancel()"
+        class="w-full py-3 rounded-xl border border-gray-300 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+        Cancel
+      </button>
+    </div>
+  </div>
+</div>

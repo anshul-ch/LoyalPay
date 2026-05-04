@@ -1,0 +1,127 @@
+<div class="space-y-6">
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+    <div>
+      <h2 class="text-2xl font-bold text-gray-900">Admin Dashboard</h2>
+      <p class="text-sm text-gray-500 mt-1">A clean control room for KYC, users, support, campaigns, and rewards.</p>
+    </div>
+    <button type="button" (click)="loadDashboard()" class="btn-secondary">Refresh</button>
+  </div>
+
+  <div *ngIf="isLoading" class="card p-6 text-gray-500">Loading dashboard...</div>
+  <div *ngIf="errorMessage" class="p-3 bg-red-50 text-red-700 rounded-lg border border-red-200">{{ errorMessage }}</div>
+
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4" *ngIf="!isLoading">
+    <a routerLink="/admin/users" class="card p-5 hover:border-banking-accent transition-colors">
+      <p class="text-sm text-gray-500">Total Users</p>
+      <p class="mt-2 text-3xl font-bold text-gray-900">{{ stats.totalUsers || 0 }}</p>
+      <p class="mt-2 text-xs text-gray-500">Manage access and KYC status</p>
+    </a>
+    <a routerLink="/admin/kyc" class="card p-5 hover:border-banking-accent transition-colors">
+      <p class="text-sm text-gray-500">Pending KYC</p>
+      <p class="mt-2 text-3xl font-bold text-amber-700">{{ stats.pendingKycCount || 0 }}</p>
+      <p class="mt-2 text-xs text-gray-500">Awaiting document review</p>
+    </a>
+    <a routerLink="/admin/tickets" class="card p-5 hover:border-banking-accent transition-colors">
+      <p class="text-sm text-gray-500">Open Tickets</p>
+      <p class="mt-2 text-3xl font-bold text-gray-900">{{ openTickets() }}</p>
+      <p class="mt-2 text-xs text-gray-500">Support queue health</p>
+    </a>
+    <a routerLink="/admin/staff" class="card p-5 hover:border-banking-accent transition-colors">
+      <p class="text-sm text-gray-500">Support Agents</p>
+      <p class="mt-2 text-3xl font-bold text-gray-900">{{ supportAgents.length }}</p>
+      <p class="mt-2 text-xs text-gray-500">Active service staff</p>
+    </a>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4" *ngIf="!isLoading">
+    <div class="card p-5">
+      <p class="text-sm text-gray-500">Silver Users</p>
+      <p class="mt-2 text-2xl font-bold text-gray-900">{{ stats.silverCount || 0 }}</p>
+    </div>
+    <div class="card p-5">
+      <p class="text-sm text-gray-500">Gold Users</p>
+      <p class="mt-2 text-2xl font-bold text-gray-900">{{ stats.goldCount || 0 }}</p>
+    </div>
+    <div class="card p-5">
+      <p class="text-sm text-gray-500">Platinum Users</p>
+      <p class="mt-2 text-2xl font-bold text-gray-900">{{ stats.platinumCount || 0 }}</p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 xl:grid-cols-2 gap-6" *ngIf="!isLoading">
+    <section class="card">
+      <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <h3 class="font-semibold text-gray-900">KYC Review Queue</h3>
+        <a routerLink="/admin/kyc" class="btn-secondary text-sm py-2">Review KYC</a>
+      </div>
+      <div class="divide-y divide-gray-200">
+        <div *ngIf="pendingKyc.length === 0" class="p-6 text-sm text-gray-500">No pending KYC submissions.</div>
+        <div *ngFor="let item of pendingKyc | slice:0:6" class="p-4 flex items-center justify-between gap-4">
+          <div>
+            <p class="font-medium text-gray-900">{{ item.fullName }}</p>
+            <p class="text-sm text-gray-500">{{ item.documentType }} | {{ item.email }}</p>
+          </div>
+          <span class="text-xs text-gray-500">{{ item.submittedAt | date:'shortDate' }}</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <h3 class="font-semibold text-gray-900">Campaign & Reward Health</h3>
+        <a routerLink="/admin/campaigns" class="btn-primary text-sm py-2">Manage</a>
+      </div>
+      <div class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="rounded-xl border border-gray-200 p-4 bg-gray-50">
+          <p class="text-sm text-gray-500">Active Campaigns</p>
+          <p class="mt-2 text-3xl font-bold">{{ activeCampaigns() }}</p>
+          <p class="text-xs text-gray-500 mt-1">of {{ campaigns.length }} total campaigns</p>
+        </div>
+        <div class="rounded-xl border border-gray-200 p-4 bg-gray-50">
+          <p class="text-sm text-gray-500">Active Rewards</p>
+          <p class="mt-2 text-3xl font-bold">{{ activeRewards() }}</p>
+          <p class="text-xs text-gray-500 mt-1">of {{ rewards.length }} catalog items</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="card" *ngIf="!isLoading">
+    <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+      <h3 class="font-semibold text-gray-900">Support Snapshot</h3>
+      <a routerLink="/admin/tickets" class="btn-secondary text-sm py-2">Open Tickets</a>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ticket</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Date</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+          <tr *ngIf="tickets.length === 0"><td colspan="5" class="px-4 py-6 text-center text-sm text-gray-500">No recent support tickets.</td></tr>
+          <tr *ngFor="let ticket of tickets">
+            <td class="px-4 py-3"><p class="font-medium">#{{ ticket.ticketNumber }}</p><p class="text-sm text-gray-500">{{ ticket.subject }}</p></td>
+            <td class="px-4 py-3 text-sm text-gray-700">{{ ticket.user?.email || 'Unknown' }}</td>
+            <td class="px-4 py-3 text-sm text-gray-700">{{ ticket.category }}</td>
+            <td class="px-4 py-3 text-sm">
+              <span class="px-2 py-1 rounded-full text-xs font-medium"
+                [ngClass]="{
+                  'bg-yellow-100 text-yellow-800': ticket.status === 'Open',
+                  'bg-blue-100 text-blue-800': ticket.status === 'InProgress',
+                  'bg-green-100 text-green-800': ticket.status === 'Resolved' || ticket.status === 'Closed'
+                }">
+                {{ ticket.status === 'Closed' ? 'Resolved' : ticket.status }}
+              </span>
+            </td>
+            <td class="px-4 py-3 text-sm text-gray-500 text-right whitespace-nowrap">{{ ticket.createdAt | date:'MMM d, y' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

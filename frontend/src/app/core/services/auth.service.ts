@@ -1,154 +1,191 @@
-import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, tap, timeout } from 'rxjs';
+import { Injectable, inject } from '@angular/core';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { BehaviorSubject, Observable, catchError, map, of, tap } from 'rxjs';
+import { jwtDecode } from 'jwt-decode';
+import { Router } from '@angular/router';
 import { environment } from '../../../environments/environment';
-import {
-  TokenDto, LoginDto, SignupDto, ForgotPasswordDto, RefreshRequestDto, ApiResponse
-} from '../models/api.models';
 
-@Injectable({ providedIn: 'root' })
+@Injectable({
+  providedIn: 'root'
+})
 export class AuthService {
-  private readonly ACCESS_KEY = 'lp_access';
-  private readonly REFRESH_KEY = 'lp_refresh';
-  private readonly api = environment.apiUrl;
-  currentUser$ = new BehaviorSubject<TokenDto | null>(this.loadUser());
+  private http = inject(HttpClient);
+  private router = inject(Router);
+  private readonly accessTokenKey = 'accessToken';
+  private readonly refreshTokenKey = 'refreshToken';
+  private readonly noticeKey = 'authNotice';
+  private readonly sessionCheckHeader = 'X-Session-Check';
 
-  constructor(private http: HttpClient) {
-    window.addEventListener('beforeunload', () => {
-      this.sendLogoutBeacon();
-    });
+  private apiUrl = environment.apiUrl;
+  
+  private currentUserSubject = new BehaviorSubject<any>(null);
+  public currentUser$ = this.currentUserSubject.asObservable();
+
+  login(credentials: any): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/login`, credentials).pipe(
+      map(res => {
+        if (res?.success === false) {
+          throw new Error(res?.message || 'Invalid email or password. Please try again.');
+        }
+        return res;
+      }),
+      tap(res => {
+        if (res.data && res.data.accessToken) {
+          this.setTokens(res.data.accessToken, res.data.refreshToken);
+        }
+      })
+    );
   }
 
-  private sendLogoutBeacon(): void {
-    const tokens = this.getStoredTokens();
-    if (!tokens?.refreshToken) return;
+  signup(payload: any): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/signup`, payload).pipe(
+      map(res => {
+        if (res?.success === false) {
+          throw new Error(res?.message || 'Signup failed.');
+        }
+        return res;
+      }),
+      tap(res => {
+        if (res.data?.accessToken) {
+          this.setTokens(res.data.accessToken, res.data.refreshToken);
+        }
+      })
+    );
+  }
 
-    const payload = JSON.stringify({ refreshToken: tokens.refreshToken });
-    const url = `${this.api}/logout`;
+  logout() {
+    const refreshToken = sessionStorage.getItem(this.refreshTokenKey);
+    if (refreshToken) {
+      this.http.post(`${this.apiUrl}/logout`, { refreshToken }).subscribe({
+        next: () => this.clearSession(),
+        error: () => this.clearSession()
+      });
+    } else {
+      this.clearSession();
+    }
+  }
 
-    if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
-      const body = new Blob([payload], { type: 'application/json' });
-      navigator.sendBeacon(url, body);
+  clearSession(noticeMessage = '') {
+    if (noticeMessage) {
+      sessionStorage.setItem(this.noticeKey, noticeMessage);
+    }
+    sessionStorage.removeItem(this.accessTokenKey);
+    sessionStorage.removeItem(this.refreshTokenKey);
+    this.currentUserSubject.next(null);
+    this.router.navigate(['/login']);
+  }
+
+  consumeNoticeMessage(): string {
+    const message = sessionStorage.getItem(this.noticeKey) || '';
+    sessionStorage.removeItem(this.noticeKey);
+    return message;
+  }
+
+  private setTokens(accessToken: string, refreshToken: string) {
+    sessionStorage.setItem(this.accessTokenKey, accessToken);
+    sessionStorage.setItem(this.refreshTokenKey, refreshToken);
+    this.loadUserFromToken();
+  }
+
+  private loadUserFromToken() {
+    const token = this.getAccessToken();
+    if (!token) {
+      this.currentUserSubject.next(null);
       return;
     }
 
-    fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: payload,
-      keepalive: true
-    }).catch(() => undefined);
-  }
-
-  private getToken(key: string): string | null {
-    return sessionStorage.getItem(key) ?? localStorage.getItem(key);
-  }
-
-  private loadUser(): TokenDto | null {
-    const token = this.getToken(this.ACCESS_KEY);
-    if (!token) return null;
     try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      const stored = this.getToken(this.REFRESH_KEY);
-      return {
-        accessToken: token,
-        refreshToken: stored ?? '',
-        email: payload.email ?? payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] ?? '',
-        fullName: payload.fullName ?? payload.name ?? payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] ?? '',
-        phone: payload.phone ?? '',
-        role: payload.role ?? payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] ?? 'User',
-        userId: payload.sub ?? payload.userId ?? payload.nameid ?? payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ?? '',
-        requiresPasswordChange: payload.requiresPasswordChange === 'true' || payload.requiresPasswordChange === true
-      } as TokenDto;
-    } catch {
-      return null;
+      const decoded: any = jwtDecode(token);
+      // Assuming roles are in a standard claim, map it based on .NET JWT structure
+      const roleClaim = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role";
+      const emailClaim = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress";
+
+      const user = {
+        id: decoded.sub || decoded["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] || decoded["http://schemas.microsoft.com/ws/2008/06/identity/claims/nameidentifier"],
+        fullName: decoded.name || decoded.fullName,
+        email: decoded[emailClaim] || decoded.email,
+        role: decoded[roleClaim] || decoded.role || 'User'
+      };
+      this.currentUserSubject.next(user);
+    } catch (error) {
+      this.clearSession();
     }
   }
 
-  private storeTokens(dto: TokenDto): void {
-    sessionStorage.setItem(this.ACCESS_KEY, dto.accessToken);
-    sessionStorage.setItem(this.REFRESH_KEY, dto.refreshToken);
+  ensureActiveSession(): Observable<boolean> {
+    if (!this.isAuthenticated()) {
+      return of(false);
+    }
 
-    // Cleanup legacy shared storage to avoid cross-tab/session bleeding.
-    localStorage.removeItem(this.ACCESS_KEY);
-    localStorage.removeItem(this.REFRESH_KEY);
-  }
-
-  clearTokens(): void {
-    sessionStorage.removeItem(this.ACCESS_KEY);
-    sessionStorage.removeItem(this.REFRESH_KEY);
-    localStorage.removeItem(this.ACCESS_KEY);
-    localStorage.removeItem(this.REFRESH_KEY);
-    this.currentUser$.next(null);
-  }
-
-  getStoredTokens(): { accessToken: string; refreshToken: string } | null {
-    const access = this.getToken(this.ACCESS_KEY);
-    const refresh = this.getToken(this.REFRESH_KEY);
-    if (!access || !refresh) return null;
-    return { accessToken: access, refreshToken: refresh };
-  }
-
-  isLoggedIn(): boolean {
-    return !!this.getStoredTokens();
-  }
-
-  isAdmin(): boolean {
-    return this.currentUser$.value?.role === 'Admin';
-  }
-
-  requiresPasswordChange(): boolean {
-    return this.currentUser$.value?.requiresPasswordChange === true;
-  }
-
-  login(dto: LoginDto): Observable<ApiResponse<TokenDto>> {
-    return this.http.post<ApiResponse<TokenDto>>(`${this.api}/login`, dto).pipe(
-      timeout(10000),
-      tap(res => {
-        if (res.success && res.data) {
-          this.storeTokens(res.data);
-          this.currentUser$.next(res.data);
+    return this.http.get<any>(`${this.apiUrl}/profile`, {
+      headers: new HttpHeaders({ [this.sessionCheckHeader]: 'true' })
+    }).pipe(
+      map(res => {
+        const isActive = res?.data?.isActive !== false;
+        if (!isActive) {
+          const reason = res?.data?.inactiveReason ? ` Reason: ${res.data.inactiveReason}` : '';
+          this.clearSession(`Your account has been deactivated.${reason}`);
         }
+        return isActive;
+      }),
+      catchError(err => {
+        if (err.status === 401 || err.status === 403) {
+          const message = err.error?.message || 'Your session is no longer available. Please sign in again.';
+          this.clearSession(message);
+        }
+        return of(false);
       })
     );
   }
 
-  signup(dto: SignupDto): Observable<ApiResponse<string>> {
-    return this.http.post<ApiResponse<string>>(`${this.api}/signup`, dto);
+  private migrateLegacyLocalStorageToken() {
+    const legacyAccessToken = localStorage.getItem(this.accessTokenKey);
+    const legacyRefreshToken = localStorage.getItem(this.refreshTokenKey);
+    const currentAccessToken = sessionStorage.getItem(this.accessTokenKey);
+
+    // One-time migration to keep currently signed-in users working after switching to per-tab storage.
+    if (!currentAccessToken && legacyAccessToken) {
+      sessionStorage.setItem(this.accessTokenKey, legacyAccessToken);
+      if (legacyRefreshToken) {
+        sessionStorage.setItem(this.refreshTokenKey, legacyRefreshToken);
+      }
+    }
+
+    localStorage.removeItem(this.accessTokenKey);
+    localStorage.removeItem(this.refreshTokenKey);
   }
 
-  logout(): Observable<ApiResponse<string>> {
-    const tokens = this.getStoredTokens();
-    const body: RefreshRequestDto = { refreshToken: tokens?.refreshToken ?? '' };
-    return this.http.post<ApiResponse<string>>(`${this.api}/logout`, body).pipe(
-      tap(() => this.clearTokens())
-    );
+  constructor() {
+    this.migrateLegacyLocalStorageToken();
+    this.loadUserFromToken();
   }
 
-  refresh(): Observable<ApiResponse<TokenDto>> {
-    const tokens = this.getStoredTokens();
-    const body: RefreshRequestDto = { refreshToken: tokens?.refreshToken ?? '' };
-    return this.http.post<ApiResponse<TokenDto>>(`${this.api}/refresh`, body).pipe(
-      tap(res => {
-        if (res.success && res.data) {
-          this.storeTokens(res.data);
-          this.currentUser$.next(res.data);
-        }
-      })
-    );
+  getAccessToken(): string | null {
+    return sessionStorage.getItem(this.accessTokenKey);
   }
 
-  forgotPassword(dto: ForgotPasswordDto): Observable<ApiResponse<string>> {
-    return this.http.post<ApiResponse<string>>(`${this.api}/forgot-password`, dto);
+  getRole(): string | null {
+    if (!this.currentUserSubject.value) {
+      this.loadUserFromToken();
+    }
+    return this.currentUserSubject.value?.role || null;
   }
 
-  updateCurrentUserProfile(partial: Partial<Pick<TokenDto, 'fullName' | 'phone' | 'email'>>): void {
-    const current = this.currentUser$.value;
-    if (!current) return;
+  getCurrentUserId(): string | null {
+    if (!this.currentUserSubject.value) {
+      this.loadUserFromToken();
+    }
+    return this.currentUserSubject.value?.id || null;
+  }
 
-    this.currentUser$.next({
-      ...current,
-      ...partial
-    });
+  getCurrentUserEmail(): string | null {
+    if (!this.currentUserSubject.value) {
+      this.loadUserFromToken();
+    }
+    return this.currentUserSubject.value?.email || null;
+  }
+
+  isAuthenticated(): boolean {
+    return !!this.getAccessToken();
   }
 }

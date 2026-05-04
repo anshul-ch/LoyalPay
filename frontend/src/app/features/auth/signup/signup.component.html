@@ -1,0 +1,92 @@
+<div class="bg-gray-50 flex flex-col items-center justify-center py-16 sm:px-6 lg:px-8">
+  <div class="sm:mx-auto sm:w-full sm:max-w-md">
+    <h2 class="mt-6 text-center text-3xl font-extrabold text-banking-primary">
+      Open a LoyalPay Account
+    </h2>
+    <p class="mt-2 text-center text-sm text-gray-600">
+      Already have an account?
+      <a routerLink="/login" class="font-medium text-banking-accent hover:text-banking-primary">
+        Sign in here
+      </a>
+    </p>
+  </div>
+
+  <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-xl">
+    <div class="bg-white py-8 px-4 shadow-sm border border-gray-200 sm:rounded-lg sm:px-10">
+      <form class="space-y-6" [formGroup]="signupForm" (ngSubmit)="onSubmit()">
+        
+        <div>
+          <label for="fullName" class="block text-sm font-medium text-gray-700">Full name</label>
+          <div class="mt-1">
+            <input type="text" formControlName="fullName" id="fullName" class="input-field py-2 px-3 border" placeholder="Anaya Sharma">
+          </div>
+        </div>
+
+        <div>
+          <label for="email" class="block text-sm font-medium text-gray-700">
+            Email address
+          </label>
+          <div class="mt-1">
+            <input id="email" formControlName="email" type="email" autocomplete="email" class="input-field py-2 px-3 border" placeholder="user@example.com">
+          </div>
+        </div>
+
+        <div>
+          <label for="phone" class="block text-sm font-medium text-gray-700">
+            Phone Number
+          </label>
+          <div class="mt-1">
+            <input id="phone" formControlName="phone" type="tel" class="input-field py-2 px-3 border" placeholder="9876543210">
+          </div>
+        </div>
+
+        <div>
+          <label for="password" class="block text-sm font-medium text-gray-700">
+            Password
+          </label>
+          <div class="mt-1 relative">
+            <input id="password" formControlName="password" [type]="showPassword ? 'text' : 'password'" class="input-field py-2 pl-3 pr-11 border" placeholder="Password">
+            <button type="button" (click)="showPassword = !showPassword" class="absolute inset-y-0 right-0 px-3 text-gray-500 hover:text-banking-primary" [attr.aria-label]="showPassword ? 'Hide password' : 'Show password'">
+              <svg *ngIf="!showPassword" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.25 12s3.75-6.75 9.75-6.75S21.75 12 21.75 12 18 18.75 12 18.75 2.25 12 2.25 12z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15.25A3.25 3.25 0 1 0 12 8.75a3.25 3.25 0 0 0 0 6.5z" />
+              </svg>
+              <svg *ngIf="showPassword" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M7.1 7.1C4 8.8 2.25 12 2.25 12S6 18.75 12 18.75c1.8 0 3.4-.6 4.8-1.4M14.1 5.5c4.7 1 7.65 6.5 7.65 6.5s-.8 1.5-2.3 3" />
+              </svg>
+            </button>
+          </div>
+          <p class="mt-1 text-xs text-gray-500">Use 8+ characters with an uppercase letter, number, and special character.</p>
+        </div>
+
+        <div *ngIf="errorMessage" class="text-sm text-red-600 font-medium bg-red-50 p-3 rounded border border-red-200">
+          {{ errorMessage }}
+        </div>
+
+        <div *ngIf="successMessage" class="text-sm text-green-700 font-medium bg-green-50 p-3 rounded border border-green-200">
+          {{ successMessage }}
+        </div>
+
+        <div>
+          <button type="submit" [disabled]="signupForm.invalid || isLoading" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-banking-primary hover:bg-banking-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-banking-accent disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors">
+            <span *ngIf="isLoading">Creating account...</span>
+            <span *ngIf="!isLoading">Create Account</span>
+          </button>
+        </div>
+      </form>
+
+      <div class="mt-6">
+        <div class="relative">
+          <div class="absolute inset-0 flex items-center">
+            <div class="w-full border-t border-gray-300"></div>
+          </div>
+          <div class="relative flex justify-center text-sm">
+            <span class="px-2 bg-white text-gray-500">
+              By registering, you agree to our Terms of Service
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

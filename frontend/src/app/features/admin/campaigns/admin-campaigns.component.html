@@ -1,0 +1,157 @@
+<div class="space-y-6">
+  <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+    <div>
+      <h2 class="text-2xl font-bold text-gray-900">Campaigns & Rewards</h2>
+      <p class="text-sm text-gray-500 mt-1">Create bonus campaigns and maintain the user reward catalog.</p>
+    </div>
+    <div class="flex flex-wrap gap-3">
+      <button type="button" (click)="activePanel = activePanel === 'campaign' ? null : 'campaign'" class="btn-primary">New Campaign</button>
+      <button type="button" (click)="activePanel = activePanel === 'reward' ? null : 'reward'" class="btn-secondary">New Reward</button>
+    </div>
+  </div>
+
+  <div *ngIf="message" class="p-3 bg-green-50 text-green-700 rounded-lg border border-green-200">{{ message }}</div>
+  <div *ngIf="error" class="p-3 bg-red-50 text-red-700 rounded-lg border border-red-200">{{ error }}</div>
+
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div class="card p-5">
+      <p class="text-sm text-gray-500">Total Campaigns</p>
+      <p class="mt-2 text-3xl font-bold text-gray-900">{{ campaigns.length }}</p>
+    </div>
+    <div class="card p-5">
+      <p class="text-sm text-gray-500">Active Campaigns</p>
+      <p class="mt-2 text-3xl font-bold text-gray-900">{{ activeCampaigns() }}</p>
+    </div>
+    <div class="card p-5">
+      <p class="text-sm text-gray-500">Catalog Items</p>
+      <p class="mt-2 text-3xl font-bold text-gray-900">{{ rewards.length }}</p>
+    </div>
+    <div class="card p-5">
+      <p class="text-sm text-gray-500">Active Rewards</p>
+      <p class="mt-2 text-3xl font-bold text-gray-900">{{ activeRewards() }}</p>
+    </div>
+  </div>
+
+  <div *ngIf="activePanel" class="card p-6">
+    <div class="flex items-center justify-between mb-5">
+      <h3 class="text-lg font-semibold text-gray-900">{{ activePanel === 'campaign' ? 'Create Campaign' : 'Create Reward' }}</h3>
+      <button type="button" (click)="activePanel = null" class="btn-secondary py-2">Cancel</button>
+    </div>
+
+    <div *ngIf="activePanel === 'campaign'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Campaign name</label>
+        <input [(ngModel)]="campaign.name" class="input-field py-2 px-3 border" placeholder="Festival Bonus">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Bonus points</label>
+        <input type="number" [(ngModel)]="campaign.bonusPoints" class="input-field py-2 px-3 border" placeholder="100">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Start date</label>
+        <input type="datetime-local" [(ngModel)]="campaign.startDate" class="input-field py-2 px-3 border">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700">End date</label>
+        <input type="datetime-local" [(ngModel)]="campaign.endDate" class="input-field py-2 px-3 border">
+      </div>
+      <div class="md:col-span-2">
+        <label class="block text-sm font-medium text-gray-700">Description</label>
+        <textarea [(ngModel)]="campaign.description" rows="3" class="input-field py-2 px-3 border" placeholder="Short internal description"></textarea>
+      </div>
+      <div class="md:col-span-2 flex justify-end">
+        <button type="button" (click)="createCampaign()" class="btn-primary">Create Campaign</button>
+      </div>
+    </div>
+
+    <div *ngIf="activePanel === 'reward'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Reward name</label>
+        <input [(ngModel)]="reward.name" class="input-field py-2 px-3 border" placeholder="INR 50 Cashback">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Type</label>
+        <select [(ngModel)]="reward.itemType" class="input-field py-2 px-3 border bg-white"><option>Cashback</option><option>Coupon</option><option>Voucher</option></select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Points cost</label>
+        <input type="number" [(ngModel)]="reward.pointsCost" class="input-field py-2 px-3 border" placeholder="100">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Stock</label>
+        <input type="number" [(ngModel)]="reward.stock" class="input-field py-2 px-3 border" placeholder="-1 for unlimited">
+      </div>
+      <div class="md:col-span-2">
+        <label class="block text-sm font-medium text-gray-700">Description</label>
+        <textarea [(ngModel)]="reward.description" rows="3" class="input-field py-2 px-3 border" placeholder="Visible reward description"></textarea>
+      </div>
+      <div class="md:col-span-2 flex justify-end">
+        <button type="button" (click)="createReward()" class="btn-primary">Create Reward</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+    <section class="card">
+      <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+        <div>
+          <h3 class="font-semibold text-gray-900">Campaigns</h3>
+          <p class="text-sm text-gray-500">Active and historical bonus campaigns</p>
+        </div>
+        <button type="button" (click)="activePanel = 'campaign'" class="btn-secondary py-2">Add</button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Campaign</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Points</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            <tr *ngIf="campaigns.length === 0"><td colspan="4" class="px-4 py-6 text-center text-sm text-gray-500">No campaigns created.</td></tr>
+            <tr *ngFor="let item of campaigns">
+              <td class="px-4 py-3"><p class="font-medium text-gray-900">{{ item.name }}</p><p class="text-sm text-gray-500">{{ item.startDate | date:'shortDate' }} - {{ item.endDate | date:'shortDate' }}</p></td>
+              <td class="px-4 py-3 text-sm">{{ item.bonusPoints }}</td>
+              <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs font-medium" [ngClass]="item.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'">{{ item.isActive ? 'Active' : 'Inactive' }}</span></td>
+              <td class="px-4 py-3 text-right space-x-2"><button type="button" (click)="toggleCampaign(item)" class="btn-secondary py-2">{{ item.isActive ? 'Deactivate' : 'Activate' }}</button><button type="button" (click)="deleteCampaign(item.campaignId)" class="btn-secondary py-2">Delete</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+        <div>
+          <h3 class="font-semibold text-gray-900">Reward Catalog</h3>
+          <p class="text-sm text-gray-500">Redeemable cashback, coupon, and voucher items</p>
+        </div>
+        <button type="button" (click)="activePanel = 'reward'" class="btn-secondary py-2">Add</button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reward</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cost</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stock</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            <tr *ngIf="rewards.length === 0"><td colspan="4" class="px-4 py-6 text-center text-sm text-gray-500">No rewards created.</td></tr>
+            <tr *ngFor="let item of rewards">
+              <td class="px-4 py-3"><p class="font-medium text-gray-900">{{ item.name }}</p><p class="text-sm text-gray-500">{{ item.itemType }} | {{ item.isActive ? 'Active' : 'Inactive' }}</p></td>
+              <td class="px-4 py-3 text-sm">{{ item.pointsCost }} pts</td>
+              <td class="px-4 py-3 text-sm">{{ item.stock === -1 ? 'Unlimited' : item.stock }}</td>
+              <td class="px-4 py-3 text-right space-x-2"><button type="button" (click)="toggleReward(item)" class="btn-secondary py-2">{{ item.isActive ? 'Deactivate' : 'Activate' }}</button><button type="button" (click)="deleteReward(item.itemId)" class="btn-secondary py-2">Delete</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</div>

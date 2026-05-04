@@ -1,99 +1,40 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import {
-  AdminDashboardDto, UserView, PagedUsersResult, KycSubmissionView, CampaignDto, KycRejectDto, UpdateUserStatusDto, ApiResponse, AdminRewardDto
-} from '../models/api.models';
-
-export interface CreateRewardDto {
-  name: string;
-  description?: string;
-  itemType: 'Cashback' | 'Coupon' | 'Voucher';
-  pointsCost: number;
-  stock: number;
-}
 
 @Injectable({ providedIn: 'root' })
 export class AdminService {
-  private readonly api = environment.apiUrl;
+  private http = inject(HttpClient);
+  private apiUrl = `${environment.apiUrl}/admin`;
 
-  constructor(private http: HttpClient) {}
-
-  getDashboard(): Observable<ApiResponse<AdminDashboardDto>> {
-    return this.http.get<ApiResponse<AdminDashboardDto>>(`${this.api}/admin/dashboard`);
+  getDashboard(): Observable<any> { return this.http.get<any>(`${this.apiUrl}/dashboard`); }
+  getUsers(filters: any = {}): Observable<any> {
+    const params = new URLSearchParams();
+    Object.keys(filters).forEach(key => {
+      if (filters[key] !== undefined && filters[key] !== null && filters[key] !== '') params.set(key, filters[key]);
+    });
+    return this.http.get<any>(`${this.apiUrl}/users?${params.toString()}`);
   }
-
-  getUsers(page = 1, pageSize = 10, search = '', kycStatus = '', tier = '', status = ''): Observable<ApiResponse<PagedUsersResult>> {
-    const params: Record<string, string> = { page: String(page), pageSize: String(pageSize) };
-    if (search)    params['search']    = search;
-    if (kycStatus) params['kycStatus'] = kycStatus;
-    if (tier)      params['tier']      = tier;
-    if (status)    params['status']    = status;
-    return this.http.get<ApiResponse<PagedUsersResult>>(`${this.api}/admin/users`, { params });
+  updateUserStatus(userId: string, payload: { isActive: boolean; reason?: string }): Observable<any> {
+    return this.http.patch<any>(`${this.apiUrl}/users/${userId}/status`, payload);
   }
-
-  updateUserStatus(userId: string, dto: UpdateUserStatusDto): Observable<ApiResponse<string>> {
-    return this.http.patch<ApiResponse<string>>(`${this.api}/admin/users/${userId}/status`, dto);
-  }
-
-  getPendingKyc(): Observable<ApiResponse<KycSubmissionView[]>> {
-    return this.http.get<ApiResponse<KycSubmissionView[]>>(`${this.api}/admin/kyc/pending`);
-  }
-
-  getKycByUser(userId: string): Observable<ApiResponse<KycSubmissionView[]>> {
-    return this.http.get<ApiResponse<KycSubmissionView[]>>(`${this.api}/admin/kyc/user/${userId}`);
-  }
-
+  getPendingKyc(): Observable<any> { return this.http.get<any>(`${this.apiUrl}/kyc/pending`); }
+  approveKyc(id: string): Observable<any> { return this.http.post<any>(`${this.apiUrl}/kyc/${id}/approve`, {}); }
+  rejectKyc(id: string, rejectionNote: string): Observable<any> { return this.http.post<any>(`${this.apiUrl}/kyc/${id}/reject`, { rejectionNote }); }
   getKycDocument(submissionId: string): Observable<Blob> {
-    return this.http.get(`${this.api}/admin/kyc/${submissionId}/document`, { responseType: 'blob' });
+    return this.http.get(`${this.apiUrl}/kyc/${submissionId}/document`, { responseType: 'blob' });
   }
-
-  approveKyc(id: string): Observable<ApiResponse<string>> {
-    return this.http.post<ApiResponse<string>>(`${this.api}/admin/kyc/${id}/approve`, {});
+  getCampaigns(): Observable<any> { return this.http.get<any>(`${this.apiUrl}/campaigns`); }
+  createCampaign(payload: any): Observable<any> { return this.http.post<any>(`${this.apiUrl}/campaigns`, payload); }
+  setCampaignActive(id: string, active: boolean): Observable<any> {
+    return this.http.patch<any>(`${this.apiUrl}/campaigns/${id}/${active ? 'activate' : 'deactivate'}`, {});
   }
-
-  rejectKyc(id: string, dto: KycRejectDto): Observable<ApiResponse<string>> {
-    return this.http.post<ApiResponse<string>>(`${this.api}/admin/kyc/${id}/reject`, dto);
+  deleteCampaign(id: string): Observable<any> { return this.http.delete<any>(`${this.apiUrl}/campaigns/${id}`); }
+  getRewards(): Observable<any> { return this.http.get<any>(`${this.apiUrl}/campaigns/rewards`); }
+  createReward(payload: any): Observable<any> { return this.http.post<any>(`${this.apiUrl}/campaigns/rewards`, payload); }
+  setRewardActive(id: string, active: boolean): Observable<any> {
+    return this.http.patch<any>(`${this.apiUrl}/campaigns/rewards/${id}/${active ? 'activate' : 'deactivate'}`, {});
   }
-
-  createCampaign(dto: CampaignDto): Observable<ApiResponse<object>> {
-    return this.http.post<ApiResponse<object>>(`${this.api}/admin/campaigns`, dto);
-  }
-
-  getCampaigns(): Observable<ApiResponse<CampaignDto[]>> {
-    return this.http.get<ApiResponse<CampaignDto[]>>(`${this.api}/admin/campaigns`);
-  }
-
-  deactivateCampaign(campaignId: string): Observable<ApiResponse<string>> {
-    return this.http.patch<ApiResponse<string>>(`${this.api}/admin/campaigns/${campaignId}/deactivate`, {});
-  }
-
-  activateCampaign(campaignId: string): Observable<ApiResponse<string>> {
-    return this.http.patch<ApiResponse<string>>(`${this.api}/admin/campaigns/${campaignId}/activate`, {});
-  }
-
-  removeCampaign(campaignId: string): Observable<ApiResponse<string>> {
-    return this.http.delete<ApiResponse<string>>(`${this.api}/admin/campaigns/${campaignId}`);
-  }
-
-  createReward(dto: CreateRewardDto): Observable<ApiResponse<object>> {
-    return this.http.post<ApiResponse<object>>(`${this.api}/admin/campaigns/rewards`, dto);
-  }
-
-  getRewards(): Observable<ApiResponse<AdminRewardDto[]>> {
-    return this.http.get<ApiResponse<AdminRewardDto[]>>(`${this.api}/admin/campaigns/rewards`);
-  }
-
-  deactivateReward(rewardId: string): Observable<ApiResponse<string>> {
-    return this.http.patch<ApiResponse<string>>(`${this.api}/admin/campaigns/rewards/${rewardId}/deactivate`, {});
-  }
-
-  activateReward(rewardId: string): Observable<ApiResponse<string>> {
-    return this.http.patch<ApiResponse<string>>(`${this.api}/admin/campaigns/rewards/${rewardId}/activate`, {});
-  }
-
-  removeReward(rewardId: string): Observable<ApiResponse<string>> {
-    return this.http.delete<ApiResponse<string>>(`${this.api}/admin/campaigns/rewards/${rewardId}`);
-  }
+  deleteReward(id: string): Observable<any> { return this.http.delete<any>(`${this.apiUrl}/campaigns/rewards/${id}`); }
 }

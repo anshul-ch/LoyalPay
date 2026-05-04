@@ -1,0 +1,24 @@
+<div class="min-h-screen bg-gray-50 flex">
+  <aside class="w-64 bg-white text-gray-800 flex flex-col border-r border-gray-200">
+    <div class="p-6 border-b border-gray-200">
+      <h2 class="text-2xl font-bold tracking-wider text-banking-primary">LoyalPay</h2>
+      <p class="text-gray-500 text-sm mt-1 uppercase tracking-widest font-semibold">Support Desk</p>
+    </div>
+    <nav class="flex-1 px-4 space-y-1 mt-6">
+      <a routerLink="/support/dashboard" routerLinkActive="bg-banking-secondary text-banking-primary" class="block px-4 py-2.5 rounded-md hover:bg-gray-100">Dashboard</a>
+      <a routerLink="/support/tickets" routerLinkActive="bg-banking-secondary text-banking-primary" class="block px-4 py-2.5 rounded-md hover:bg-gray-100">Ticket Queue</a>
+    </nav>
+    <div class="p-4 border-t border-gray-200">
+      <button (click)="logout()" class="w-full text-left px-4 py-2 rounded-md text-red-600 hover:bg-red-50">Sign Out</button>
+    </div>
+  </aside>
+  <main class="flex-1 flex flex-col min-w-0">
+    <header class="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-8 shrink-0">
+      <h1 class="text-xl font-semibold text-gray-800">Support Center</h1>
+      <span class="text-sm font-medium text-banking-primary bg-banking-secondary py-1 px-3 rounded-full">Support Agent</span>
+    </header>
+    <div class="p-8 flex-1 overflow-y-auto bg-gray-50">
+      <router-outlet></router-outlet>
+    </div>
+  </main>
+</div>

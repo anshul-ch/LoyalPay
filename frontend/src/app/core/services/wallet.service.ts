@@ -1,59 +1,41 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import {
-  BalanceDto, TopUpDto, TopUpResultDto, TransferDto, TransactionDto, ApiResponse, LookupDto
-} from '../models/api.models';
 
-@Injectable({ providedIn: 'root' })
+@Injectable({
+  providedIn: 'root'
+})
 export class WalletService {
-  private readonly api = environment.apiUrl;
+  private http = inject(HttpClient);
+  private apiUrl = `${environment.apiUrl}/wallet`;
+  private statementUrl = `${environment.apiUrl}/statement`;
 
-  constructor(private http: HttpClient) {}
-
-  getBalance(): Observable<ApiResponse<BalanceDto>> {
-    return this.http.get<ApiResponse<BalanceDto>>(`${this.api}/wallet/balance`);
+  getBalance(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/balance`);
   }
 
-  startTopUp(dto: TopUpDto): Observable<ApiResponse<TopUpResultDto>> {
-    return this.http.post<ApiResponse<TopUpResultDto>>(`${this.api}/wallet/topup`, dto);
+  getTransactions(page: number = 1, size: number = 10): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/transactions?page=${page}&size=${size}`);
   }
 
-  finishTopUp(topUpId: string, success: boolean): Observable<ApiResponse<TransactionDto>> {
-    return this.http.post<ApiResponse<TransactionDto>>(
-      `${this.api}/wallet/topup/${topUpId}/finish`,
-      { success }
-    );
+  startTopUp(payload: any): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/topup`, payload);
   }
 
-  transfer(dto: TransferDto): Observable<ApiResponse<TransactionDto>> {
-    return this.http.post<ApiResponse<TransactionDto>>(`${this.api}/wallet/transfer`, dto);
+  finishTopUp(topUpId: string, payload: any): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/topup/${topUpId}/finish`, payload);
   }
 
-  getTransactions(page: number = 1, size: number = 20): Observable<ApiResponse<{ items: TransactionDto[], total: number, page: number, size: number }>> {
-    return this.http.get<ApiResponse<{ items: TransactionDto[], total: number, page: number, size: number }>>(
-      `${this.api}/wallet/transactions?page=${page}&size=${size}`
-    );
+  transfer(payload: any): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/transfer`, payload);
   }
 
-  lookupByEmail(email: string): Observable<ApiResponse<LookupDto>> {
-    return this.http.get<ApiResponse<LookupDto>>(
-      `${this.api}/profile/lookup?email=${encodeURIComponent(email)}`
-    );
-  }
-
-  getStatementPdf(from: string, to: string): Observable<Blob> {
-    return this.http.get(
-      `${this.api}/statement/pdf?from=${from}&to=${to}`,
-      { responseType: 'blob' }
-    );
-  }
-
-  getStatementCsv(from: string, to: string): Observable<Blob> {
-    return this.http.get(
-      `${this.api}/statement/csv?from=${from}&to=${to}`,
-      { responseType: 'blob' }
-    );
+  downloadStatement(format: 'pdf' | 'csv', from?: string, to?: string): Observable<Blob> {
+    const params = new URLSearchParams();
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return this.http.get(`${this.statementUrl}/${format}${query}`, { responseType: 'blob' });
   }
 }
