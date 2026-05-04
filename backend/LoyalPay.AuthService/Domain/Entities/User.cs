@@ -58,4 +58,11 @@ public class User
     /// </summary>
     [MaxLength(100)]
     public string? TransactionPinHash { get; set; }
+
+    /// <summary>
+    /// Indicates if user must reset their PIN after support agent resets it to default.
+    /// Set to true when support resets PIN to 00000, allowing user to set their own PIN.
+    /// Set to false once user successfully sets a new PIN.
+    /// </summary>
+    public bool MustResetPin { get; set; } = false;
 }

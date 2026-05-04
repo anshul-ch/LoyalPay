@@ -62,4 +62,13 @@ public class PinController : ControllerBase
         var result = await _authService.ResetTransactionPinAsync(GetUserId(), dto);
         return Ok(result);
     }
+
+    /// <summary>User can change their own PIN using current PIN.</summary>
+    [HttpPost("change")]
+    [Authorize(Roles = "User")]
+    public async Task<IActionResult> ChangePin([FromBody] ChangePinDto dto)
+    {
+        var result = await _authService.ChangeTransactionPinAsync(GetUserId(), dto);
+        return Ok(result);
+    }
 }

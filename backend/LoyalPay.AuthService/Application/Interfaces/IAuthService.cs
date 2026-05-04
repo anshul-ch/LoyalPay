@@ -68,6 +68,7 @@ public interface IAuthService
 
     /// <summary>Returns { hasPin: bool } for the current user.</summary>
     Task<ApiResponse<bool>> GetPinStatusAsync(Guid userId);
+    Task<ApiResponse<string>> ChangeTransactionPinAsync(Guid userId, ChangePinDto dto);
 
     /// <summary>
     /// Resets PIN — Support-only. Requires an open PinReset ticket for the target user.
@@ -77,14 +78,21 @@ public interface IAuthService
     // ── Support Tickets ──────────────────────────────────────────
 
     Task<ApiResponse<object>> CreateTicketAsync(Guid userId, CreateTicketDto dto);
+    Task<ApiResponse<object>> CreatePublicTicketAsync(CreatePublicTicketDto dto);
     Task<ApiResponse<object>> GetMyTicketsAsync(Guid userId);
     Task<ApiResponse<object>> GetAllTicketsAsync(int page, int size, string? status, string? category, Guid? assignedTo);
     Task<ApiResponse<object>> GetTicketByIdAsync(Guid ticketId);
     Task<ApiResponse<string>> UpdateTicketAsync(Guid ticketId, UpdateTicketDto dto, Guid agentUserId);
     Task<ApiResponse<string>> AssignTicketAsync(Guid ticketId, Guid supportAgentId, Guid adminUserId);
+    Task<ApiResponse<string>> RequestTicketOwnershipAsync(Guid ticketId, Guid supportUserId, string? reason);
 
     // ── Support Agent Management ─────────────────────────────────
 
     Task<ApiResponse<string>> CreateSupportAgentAsync(CreateSupportAgentDto dto, Guid adminUserId);
     Task<ApiResponse<object>> GetSupportAgentsAsync();
+
+    // ── User Account Management ──────────────────────────────────
+
+    Task<ApiResponse<string>> ActivateUserAsync(Guid userId, Guid adminUserId);
+    Task<ApiResponse<string>> DeactivateUserAsync(Guid userId, string? reason, Guid adminUserId);
 }

@@ -68,6 +68,11 @@ public class WalletService : IWalletService
             return ApiResponse<object>.Fail("Your account is inactive. Top-up is not allowed.");
         }
 
+        if (!string.Equals(user.KycStatus, "Approved", StringComparison.OrdinalIgnoreCase))
+        {
+            return ApiResponse<object>.Fail("Your KYC is not approved. Top-up is not allowed.");
+        }
+
         var wallet = await _walletRepository.GetWalletByUserIdAsync(userId);
         if (wallet == null)
         {
@@ -135,6 +140,13 @@ public class WalletService : IWalletService
             topUp.Status = "Failed";
             await _topUpRepository.SaveChangesAsync();
             return ApiResponse<string>.Fail("Your account is inactive. Top-up cannot be completed.");
+        }
+
+        if (!string.Equals(topUpUser.KycStatus, "Approved", StringComparison.OrdinalIgnoreCase))
+        {
+            topUp.Status = "Failed";
+            await _topUpRepository.SaveChangesAsync();
+            return ApiResponse<string>.Fail("Your KYC is not approved. Top-up cannot be completed.");
         }
 
         if (!success)

@@ -61,6 +61,16 @@ public class AuthService : IAuthService
         _ => "Medium"
     };
 
+    private static string BuildDeactivationMessage(string? inactiveReason)
+    {
+        if (string.IsNullOrWhiteSpace(inactiveReason))
+        {
+            return "Your account has been deactivated. Please contact support.";
+        }
+
+        return $"Your account has been deactivated. Reason : {inactiveReason} Please contact support.";
+    }
+
     /// <summary>
     /// Creates a fresh access + refresh token pair and persists the refresh token.
     /// Called after every successful login, signup, or token refresh.
@@ -149,7 +159,7 @@ public class AuthService : IAuthService
                 ? string.Empty
                 : $" Reason: {user.InactiveReason}";
 
-            return ApiResponse<TokenDto>.Fail($"This account has been deactivated.{reason}");
+            return ApiResponse<TokenDto>.Fail(BuildDeactivationMessage(user.InactiveReason));
         }
 
         // Revoke all existing sessions on new login (single-session policy).
@@ -206,7 +216,7 @@ public class AuthService : IAuthService
                 ? string.Empty
                 : $" Reason: {storedToken.User.InactiveReason}";
 
-            return ApiResponse<TokenDto>.Fail($"This account has been deactivated.{reason}");
+            return ApiResponse<TokenDto>.Fail(BuildDeactivationMessage(storedToken.User.InactiveReason));
         }
 
         if (storedToken.ExpiresAt < DateTime.UtcNow)
@@ -288,7 +298,8 @@ public class AuthService : IAuthService
             user.InactiveReason,
             user.IsActive,
             user.CreatedAt,
-            HasPin = !string.IsNullOrEmpty(user.TransactionPinHash)
+            HasPin = !string.IsNullOrEmpty(user.TransactionPinHash),
+            user.MustResetPin
         };
 
         return ApiResponse<object>.Ok(data);
@@ -501,13 +512,15 @@ public class AuthService : IAuthService
         if (user == null)
             return ApiResponse<string>.Fail("User not found.");
 
-        if (!string.IsNullOrEmpty(user.TransactionPinHash))
+        // Allow setting PIN if MustResetPin is true (after support reset) or if no PIN exists
+        if (!string.IsNullOrEmpty(user.TransactionPinHash) && !user.MustResetPin)
             return ApiResponse<string>.Fail("Transaction PIN is already set. Contact support if you need a reset.");
 
         if (string.IsNullOrWhiteSpace(pin) || pin.Length != 5 || !pin.All(char.IsDigit))
             return ApiResponse<string>.Fail("PIN must be exactly 5 digits.");
 
         user.TransactionPinHash = BCrypt.Net.BCrypt.HashPassword(pin, workFactor: 10);
+        user.MustResetPin = false; // Clear the flag after successful PIN set
         await _userRepository.SaveChangesAsync();
 
         return ApiResponse<string>.Ok("Transaction PIN set successfully.");
@@ -535,6 +548,28 @@ public class AuthService : IAuthService
         return ApiResponse<bool>.Ok(!string.IsNullOrEmpty(user.TransactionPinHash));
     }
 
+    public async Task<ApiResponse<string>> ChangeTransactionPinAsync(Guid userId, ChangePinDto dto)
+    {
+        var user = await _userRepository.GetUserByIdAsync(userId);
+        if (user == null)
+            return ApiResponse<string>.Fail("User not found.");
+
+        if (string.IsNullOrWhiteSpace(user.TransactionPinHash))
+            return ApiResponse<string>.Fail("No transaction PIN set. Please set PIN first.");
+
+        if (dto.CurrentPin == dto.NewPin)
+            return ApiResponse<string>.Fail("New PIN must be different from current PIN.");
+
+        var isValidCurrentPin = BCrypt.Net.BCrypt.Verify(dto.CurrentPin, user.TransactionPinHash);
+        if (!isValidCurrentPin)
+            return ApiResponse<string>.Fail("Current PIN is incorrect.");
+
+        user.TransactionPinHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPin, workFactor: 10);
+        await _userRepository.SaveChangesAsync();
+
+        return ApiResponse<string>.Ok("Transaction PIN changed successfully.");
+    }
+
     public async Task<ApiResponse<string>> ResetTransactionPinAsync(Guid supportUserId, ResetUserPinDto dto)
     {
         // Validate support user
@@ -556,19 +591,21 @@ public class AuthService : IAuthService
         if (ticket.Status == "Resolved" || ticket.Status == "Closed")
             return ApiResponse<string>.Fail("This ticket is already resolved.");
 
-        if (string.IsNullOrWhiteSpace(dto.NewPin) || dto.NewPin.Length != 5 || !dto.NewPin.All(char.IsDigit))
-            return ApiResponse<string>.Fail("New PIN must be exactly 5 digits.");
+        if (ticket.AssignedToUserId != supportUserId)
+            return ApiResponse<string>.Fail("Only the assigned support agent can reset PIN for this ticket.");
 
-        // Reset the PIN
+        // Reset PIN to default 00000
         var user = await _userRepository.GetUserByIdAsync(dto.UserId);
         if (user == null)
             return ApiResponse<string>.Fail("Target user not found.");
 
-        user.TransactionPinHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPin, workFactor: 10);
+        // Hash default PIN "00000"
+        user.TransactionPinHash = BCrypt.Net.BCrypt.HashPassword("00000", workFactor: 10);
+        user.MustResetPin = true; // Allow user to set their own PIN
 
         // Resolve the ticket
         ticket.Status = "Resolved";
-        ticket.Resolution = "Transaction PIN reset by support agent.";
+        ticket.Resolution = "Transaction PIN reset by support agent to default (00000). User can now set their own PIN.";
         ticket.ResolvedAt = DateTime.UtcNow;
         ticket.UpdatedAt = DateTime.UtcNow;
 
@@ -589,7 +626,7 @@ public class AuthService : IAuthService
             supportUserId,
             DateTime.UtcNow));
 
-        return ApiResponse<string>.Ok("Transaction PIN reset successfully and ticket resolved.");
+        return ApiResponse<string>.Ok("Transaction PIN reset to default. User can now set their own PIN from their profile.");
     }
 
     // ── Support Tickets ────────────────────────────────────────────────────────
@@ -631,6 +668,49 @@ public class AuthService : IAuthService
         };
 
         return ApiResponse<object>.Ok(result, "Support ticket created successfully.");
+    }
+
+    public async Task<ApiResponse<object>> CreatePublicTicketAsync(CreatePublicTicketDto dto)
+    {
+        var user = await _userRepository.GetUserByEmailAsync(dto.Email);
+        if (user == null)
+        {
+            return ApiResponse<object>.Fail("No account found with that email address.");
+        }
+
+        var ticketNumber = await _ticketRepository.GetNextTicketNumberAsync();
+        var subject = $"[{dto.Category.Trim()}] {dto.ReasonType.Trim()}";
+        var description = $"Requester email: {dto.Email.Trim()}\n\n{dto.Description.Trim()}";
+
+        var ticket = new SupportTicket
+        {
+            TicketNumber = $"LP-{ticketNumber:D5}",
+            UserId = user.UserId,
+            Category = dto.Category,
+            Subject = subject,
+            Description = description,
+            Status = "Open",
+            Priority = GetTicketPriority(dto.Category),
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        await _ticketRepository.AddAsync(ticket);
+        await _ticketRepository.SaveChangesAsync();
+
+        var result = new
+        {
+            ticket.TicketId,
+            ticket.TicketNumber,
+            ticket.Category,
+            ticket.Subject,
+            ticket.Description,
+            ticket.Status,
+            ticket.Priority,
+            ticket.CreatedAt
+        };
+
+        return ApiResponse<object>.Ok(result, "Support ticket submitted. An agent will review your account status.");
     }
 
     public async Task<ApiResponse<object>> GetMyTicketsAsync(Guid userId)
@@ -720,9 +800,27 @@ public class AuthService : IAuthService
         if (ticket == null)
             return ApiResponse<string>.Fail("Ticket not found.");
 
+        var actor = await _userRepository.GetUserByIdAsync(agentUserId);
+        if (actor == null || (actor.Role != "Admin" && actor.Role != "Support"))
+            return ApiResponse<string>.Fail("Unauthorized.");
+
+        if (actor.Role == "Support" && ticket.AssignedToUserId != agentUserId)
+            return ApiResponse<string>.Fail("Only the assigned support agent can update this ticket.");
+
         var validStatuses = new[] { "Open", "InProgress", "Resolved", "Closed" };
         if (!validStatuses.Contains(dto.Status))
             return ApiResponse<string>.Fail("Invalid status.");
+
+        if (!string.IsNullOrWhiteSpace(dto.Priority))
+        {
+            if (actor.Role != "Admin")
+                return ApiResponse<string>.Fail("Only admin can change ticket priority.");
+
+            var validPriorities = new[] { "Low", "Medium", "High" };
+            if (!validPriorities.Contains(dto.Priority))
+                return ApiResponse<string>.Fail("Invalid priority.");
+            ticket.Priority = dto.Priority;
+        }
 
         var prevStatus = ticket.Status;
         ticket.Status = dto.Status;
@@ -779,6 +877,32 @@ public class AuthService : IAuthService
         return ApiResponse<string>.Ok($"Ticket assigned to {agent.FullName}.");
     }
 
+    public async Task<ApiResponse<string>> RequestTicketOwnershipAsync(Guid ticketId, Guid supportUserId, string? reason)
+    {
+        var requester = await _userRepository.GetUserByIdAsync(supportUserId);
+        if (requester == null || requester.Role != "Support")
+            return ApiResponse<string>.Fail("Unauthorized.");
+
+        var ticket = await _ticketRepository.GetByIdAsync(ticketId);
+        if (ticket == null)
+            return ApiResponse<string>.Fail("Ticket not found.");
+
+        if (ticket.AssignedToUserId == supportUserId)
+            return ApiResponse<string>.Fail("Ticket is already assigned to you.");
+
+        var requestNote = $"[Ownership Request] {requester.FullName} requested assignment";
+        if (!string.IsNullOrWhiteSpace(reason))
+            requestNote += $": {reason.Trim()}";
+
+        ticket.Resolution = string.IsNullOrWhiteSpace(ticket.Resolution)
+            ? requestNote
+            : $"{ticket.Resolution}\n{requestNote}";
+        ticket.UpdatedAt = DateTime.UtcNow;
+
+        await _ticketRepository.SaveChangesAsync();
+        return ApiResponse<string>.Ok("Ownership request submitted. Admin approval required.");
+    }
+
     // ── Support Agent Management ───────────────────────────────────────────────
 
     public async Task<ApiResponse<string>> CreateSupportAgentAsync(CreateSupportAgentDto dto, Guid adminUserId)
@@ -825,5 +949,55 @@ public class AuthService : IAuthService
         }).ToList();
 
         return ApiResponse<object>.Ok(data);
+    }
+
+    // ── User Account Management ──────────────────────────────────
+
+    public async Task<ApiResponse<string>> ActivateUserAsync(Guid userId, Guid adminUserId)
+    {
+        // Verify admin
+        var admin = await _userRepository.GetUserByIdAsync(adminUserId);
+        if (admin == null || (admin.Role != "Admin" && admin.Role != "Support"))
+            return ApiResponse<string>.Fail("Unauthorized: Only admins or support agents can activate users.");
+
+        var user = await _userRepository.GetUserByIdAsync(userId);
+        if (user == null)
+            return ApiResponse<string>.Fail("User not found.");
+
+        if (user.IsActive)
+            return ApiResponse<string>.Fail("User is already active.");
+
+        user.IsActive = true;
+        user.InactiveReason = null;
+        await _userRepository.SaveChangesAsync();
+
+        // Publish event for audit logging
+        await _publishEndpoint.Publish(new UserActivatedEvent(userId, user.Email, user.FullName, DateTime.UtcNow));
+
+        return ApiResponse<string>.Ok("User account has been activated successfully.");
+    }
+
+    public async Task<ApiResponse<string>> DeactivateUserAsync(Guid userId, string? reason, Guid adminUserId)
+    {
+        // Verify admin
+        var admin = await _userRepository.GetUserByIdAsync(adminUserId);
+        if (admin == null || admin.Role != "Admin")
+            return ApiResponse<string>.Fail("Unauthorized: Only admins can deactivate users.");
+
+        var user = await _userRepository.GetUserByIdAsync(userId);
+        if (user == null)
+            return ApiResponse<string>.Fail("User not found.");
+
+        if (!user.IsActive)
+            return ApiResponse<string>.Fail("User is already deactivated.");
+
+        user.IsActive = false;
+        user.InactiveReason = reason;
+        await _userRepository.SaveChangesAsync();
+
+        // Publish event for audit logging
+        await _publishEndpoint.Publish(new UserDeactivatedEvent(userId, user.Email, user.FullName, reason, DateTime.UtcNow));
+
+        return ApiResponse<string>.Ok("User account has been deactivated successfully.");
     }
 }
