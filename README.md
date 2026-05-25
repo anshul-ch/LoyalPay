@@ -1,7 +1,6 @@
 # LoyalPay
 
-A .NET 8 microservices backend for a digital wallet and loyalty rewards platform. Built as a college project to learn microservices architecture in practice.
-
+A .NET 8 microservices backend for a digital wallet and loyalty rewards platform.
 ---
 
 ## Architecture
