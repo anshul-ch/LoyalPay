@@ -278,13 +278,17 @@ public class RewardsService : IRewardsService
             var cashbackAmount = ParseCashbackAmount(item);
             if (cashbackAmount > 0)
             {
-                await _publishEndpoint.Publish(new CashbackRedeemedEvent(
-                    userId,
-                    redemption.RedemptionId,
-                    item.ItemId,
-                    item.Name,
-                    cashbackAmount
-                ));
+                try
+                {
+                    await _publishEndpoint.Publish(new CashbackRedeemedEvent(
+                        userId,
+                        redemption.RedemptionId,
+                        item.ItemId,
+                        item.Name,
+                        cashbackAmount
+                    ));
+                }
+                catch { /* messaging failure is non-critical */ }
 
                 successMessage = $"Cashback redemption successful. INR {cashbackAmount:0.00} will be credited to your wallet shortly.";
             }

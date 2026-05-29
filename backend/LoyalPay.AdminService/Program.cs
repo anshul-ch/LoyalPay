@@ -3,7 +3,10 @@ using LoyalPay.AdminService.Application.Services;
 using LoyalPay.AdminService.Infrastructure.Persistence.DbContext;
 using LoyalPay.Shared.Extensions;
 using MassTransit;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
+using System.Net;
+using System.Text.Json;
 
 ServiceExtensions.LoadEnv();
 
@@ -57,6 +60,24 @@ builder.Services.AddMassTransit(x =>
 
 var app = builder.Build();
 
+// Global exception handler — returns JSON instead of HTML for all unhandled exceptions
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+        context.Response.ContentType = "application/json";
+
+        var error = context.Features.Get<IExceptionHandlerFeature>();
+        var message = app.Environment.IsDevelopment()
+            ? error?.Error?.Message ?? "An unexpected error occurred."
+            : "An unexpected error occurred. Please try again.";
+
+        var response = JsonSerializer.Serialize(new { success = false, message });
+        await context.Response.WriteAsync(response);
+    });
+});
+
 using (var scope = app.Services.CreateScope())
 {
     var rewardsDb = scope.ServiceProvider.GetRequiredService<AdminRewardsDbContext>();
@@ -71,7 +92,6 @@ using (var scope = app.Services.CreateScope())
     }
     catch (Exception ex)
     {
-        // Log the exception but don't fail the application start
         Console.WriteLine($"Warning: Could not seed admin data: {ex.Message}");
     }
 }

@@ -133,7 +133,7 @@ public class AuthService : IAuthService
         await _userRepository.SaveChangesAsync();
 
         // Notify WalletService and RewardsService to create accounts for this user.
-        await _publishEndpoint.Publish(new UserRegisteredEvent(user.UserId, user.Email, user.FullName));
+        try { await _publishEndpoint.Publish(new UserRegisteredEvent(user.UserId, user.Email, user.FullName)); } catch { /* messaging failure is non-critical */ }
 
         var tokens = await IssueTokensAsync(user);
         return ApiResponse<TokenDto>.Ok(tokens, "Account created successfully!");
@@ -155,10 +155,6 @@ public class AuthService : IAuthService
 
         if (!user.IsActive)
         {
-            var reason = string.IsNullOrWhiteSpace(user.InactiveReason)
-                ? string.Empty
-                : $" Reason: {user.InactiveReason}";
-
             return ApiResponse<TokenDto>.Fail(BuildDeactivationMessage(user.InactiveReason));
         }
 
@@ -173,7 +169,7 @@ public class AuthService : IAuthService
 
         var (browser, os) = ParseUserAgent(userAgent);
         var tokens = await IssueTokensAsync(user);
-        await _publishEndpoint.Publish(new UserLoggedInEvent(user.UserId, user.Email, user.FullName, DateTime.UtcNow, browser, os));
+        try { await _publishEndpoint.Publish(new UserLoggedInEvent(user.UserId, user.Email, user.FullName, DateTime.UtcNow, browser, os)); } catch { /* messaging failure is non-critical */ }
         return ApiResponse<TokenDto>.Ok(tokens);
     }
 
@@ -212,10 +208,6 @@ public class AuthService : IAuthService
 
         if (!storedToken.User.IsActive)
         {
-            var reason = string.IsNullOrWhiteSpace(storedToken.User.InactiveReason)
-                ? string.Empty
-                : $" Reason: {storedToken.User.InactiveReason}";
-
             return ApiResponse<TokenDto>.Fail(BuildDeactivationMessage(storedToken.User.InactiveReason));
         }
 
@@ -268,12 +260,16 @@ public class AuthService : IAuthService
         await _userRepository.SaveChangesAsync();
         await _refreshTokenRepository.SaveChangesAsync();
 
-        await _publishEndpoint.Publish(new ForgotPasswordIssuedEvent(
-            user.UserId,
-            user.Email,
-            user.FullName,
-            tempPassword,
-            DateTime.UtcNow));
+        try
+        {
+            await _publishEndpoint.Publish(new ForgotPasswordIssuedEvent(
+                user.UserId,
+                user.Email,
+                user.FullName,
+                tempPassword,
+                DateTime.UtcNow));
+        }
+        catch { /* messaging failure is non-critical */ }
 
         return ApiResponse<string>.Ok(safeMessage);
     }
@@ -359,12 +355,16 @@ public class AuthService : IAuthService
         await _userRepository.SaveChangesAsync();
         await _refreshTokenRepository.SaveChangesAsync();
 
-        await _publishEndpoint.Publish(new UserNotificationRequestedEvent(
-            userId,
-            "Security",
-            "Password changed",
-            "Your account password was changed successfully. If this was not you, contact support immediately.",
-            DateTime.UtcNow));
+        try
+        {
+            await _publishEndpoint.Publish(new UserNotificationRequestedEvent(
+                userId,
+                "Security",
+                "Password changed",
+                "Your account password was changed successfully. If this was not you, contact support immediately.",
+                DateTime.UtcNow));
+        }
+        catch { /* messaging failure is non-critical */ }
 
         return ApiResponse<string>.Ok("Password changed successfully.");
     }
@@ -613,18 +613,22 @@ public class AuthService : IAuthService
         await _ticketRepository.SaveChangesAsync();
 
         // Notify user via email
-        await _publishEndpoint.Publish(new SupportTicketUpdatedEvent(
-            ticket.TicketId,
-            ticket.TicketNumber,
-            ticket.UserId,
-            user.Email,
-            user.FullName,
-            ticket.Category,
-            ticket.Subject,
-            "Resolved",
-            ticket.Resolution,
-            supportUserId,
-            DateTime.UtcNow));
+        try
+        {
+            await _publishEndpoint.Publish(new SupportTicketUpdatedEvent(
+                ticket.TicketId,
+                ticket.TicketNumber,
+                ticket.UserId,
+                user.Email,
+                user.FullName,
+                ticket.Category,
+                ticket.Subject,
+                "Resolved",
+                ticket.Resolution,
+                supportUserId,
+                DateTime.UtcNow));
+        }
+        catch { /* messaging failure is non-critical */ }
 
         return ApiResponse<string>.Ok("Transaction PIN reset to default. User can now set their own PIN from their profile.");
     }
@@ -840,18 +844,22 @@ public class AuthService : IAuthService
             var user = await _userRepository.GetUserByIdAsync(ticket.UserId);
             if (user != null)
             {
-                await _publishEndpoint.Publish(new SupportTicketUpdatedEvent(
-                    ticket.TicketId,
-                    ticket.TicketNumber,
-                    ticket.UserId,
-                    user.Email,
-                    user.FullName,
-                    ticket.Category,
-                    ticket.Subject,
-                    dto.Status,
-                    ticket.Resolution,
-                    agentUserId,
-                    DateTime.UtcNow));
+                try
+                {
+                    await _publishEndpoint.Publish(new SupportTicketUpdatedEvent(
+                        ticket.TicketId,
+                        ticket.TicketNumber,
+                        ticket.UserId,
+                        user.Email,
+                        user.FullName,
+                        ticket.Category,
+                        ticket.Subject,
+                        dto.Status,
+                        ticket.Resolution,
+                        agentUserId,
+                        DateTime.UtcNow));
+                }
+                catch { /* messaging failure is non-critical */ }
             }
         }
 
@@ -972,7 +980,7 @@ public class AuthService : IAuthService
         await _userRepository.SaveChangesAsync();
 
         // Publish event for audit logging
-        await _publishEndpoint.Publish(new UserActivatedEvent(userId, user.Email, user.FullName, DateTime.UtcNow));
+        try { await _publishEndpoint.Publish(new UserActivatedEvent(userId, user.Email, user.FullName, DateTime.UtcNow)); } catch { /* messaging failure is non-critical */ }
 
         return ApiResponse<string>.Ok("User account has been activated successfully.");
     }
@@ -996,7 +1004,7 @@ public class AuthService : IAuthService
         await _userRepository.SaveChangesAsync();
 
         // Publish event for audit logging
-        await _publishEndpoint.Publish(new UserDeactivatedEvent(userId, user.Email, user.FullName, reason, DateTime.UtcNow));
+        try { await _publishEndpoint.Publish(new UserDeactivatedEvent(userId, user.Email, user.FullName, reason, DateTime.UtcNow)); } catch { /* messaging failure is non-critical */ }
 
         return ApiResponse<string>.Ok("User account has been deactivated successfully.");
     }

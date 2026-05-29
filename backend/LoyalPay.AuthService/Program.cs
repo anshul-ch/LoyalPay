@@ -5,7 +5,10 @@ using LoyalPay.AuthService.Infrastructure.Persistence.DbContext;
 using LoyalPay.AuthService.Infrastructure.Persistence.Repositories;
 using LoyalPay.Shared.Extensions;
 using MassTransit;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
+using System.Net;
+using System.Text.Json;
 
 ServiceExtensions.LoadEnv();
 
@@ -64,6 +67,24 @@ builder.Services.AddMassTransit(x =>
 });
 
 var app = builder.Build();
+
+// Global exception handler — returns JSON instead of HTML for all unhandled exceptions
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+        context.Response.ContentType = "application/json";
+
+        var error = context.Features.Get<IExceptionHandlerFeature>();
+        var message = app.Environment.IsDevelopment()
+            ? error?.Error?.Message ?? "An unexpected error occurred."
+            : "An unexpected error occurred. Please try again.";
+
+        var response = JsonSerializer.Serialize(new { success = false, message });
+        await context.Response.WriteAsync(response);
+    });
+});
 
 // Auto-migrate on startup so the DB is always up to date.
 using (var scope = app.Services.CreateScope())

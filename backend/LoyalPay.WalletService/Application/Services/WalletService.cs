@@ -176,7 +176,7 @@ public class WalletService : IWalletService
         await _topUpRepository.SaveChangesAsync();
 
         var topUpCompletedEvent = new TopUpCompletedEvent(wallet.UserId, topUp.Amount, topUp.TopUpId, topUp.PaymentMethod);
-        await _publishEndpoint.Publish(topUpCompletedEvent);
+        try { await _publishEndpoint.Publish(topUpCompletedEvent); } catch { /* messaging failure is non-critical */ }
 
         return ApiResponse<string>.Ok("Top-up completed successfully.");
     }
@@ -298,15 +298,19 @@ public class WalletService : IWalletService
         await _ledgerRepository.AddLedgerEntryAsync(receiverEntry);
         await _transferRepository.SaveChangesAsync();
 
-        await _publishEndpoint.Publish(new TransferCompletedEvent(
-            transferRequest.TransferId,
-            senderUserId,
-            dto.ReceiverUserId,
-            dto.Amount,
-            dto.Note,
-            dto.SenderName,
-            dto.ReceiverName
-        ));
+        try
+        {
+            await _publishEndpoint.Publish(new TransferCompletedEvent(
+                transferRequest.TransferId,
+                senderUserId,
+                dto.ReceiverUserId,
+                dto.Amount,
+                dto.Note,
+                dto.SenderName,
+                dto.ReceiverName
+            ));
+        }
+        catch { /* messaging failure is non-critical */ }
 
         return ApiResponse<string>.Ok("Transfer completed successfully.");
     }
